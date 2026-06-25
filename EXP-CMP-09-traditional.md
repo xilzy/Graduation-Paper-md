@@ -1,0 +1,102 @@
+# EXP-CMP-09：传统（非学习）图像融合基线复现（LP / DWT / DTCWT / GTF / NSCT*）
+
+- 日期：2026-06-25
+- 所属阶段：阶段 5（综合对比 / 经典传统方法对照锚点）
+- 结果级别：S2（完整测试子集，三任务）
+- 关联代码：实现脚本 `code/Graduation-Paper/bench/traditional/traditional_fusion.py`（纯 CPU，numpy/scipy/pywt/dtcwt）
+- 评测器：`code/Graduation-Paper/bench/eval_method.py`（共享 `metrics/` 包）
+
+## 0. 复现基础设施（沿用统一契约）
+遵循 `fusion_bench/BENCH_CONTRACT.md`：标准化 8-bit 灰度输入 `fusion_bench/inputs/<task>/{A,B}/<stem>.png`
+（A=彩色/功能源，B=灰度/结构源）；融合图按 stem 写到 `fusion_bench/fused/<Method>/<task>/`；统一评测器算
+EN/MI/SD/SF/AG/SSIM/MS_SSIM/Qabf/VIF + 诊断 SCD/Nabf/CC + 功能轴 FuncCorr/FuncSal。
+- 任务（对数）：`irvis` 50（VIS-Y / IR）、`medical` 48（PET/SPECT-Y / MRI）、`gfp_pc` 30（GFP-Y / PC）。
+- IR/VIS 角色映射：B→IR 槽（结构/强度），A→VIS 槽（纹理/梯度），与契约一致。GTF 据此保留 B 强度、迁移 A 梯度。
+
+## 1. 方法说明（均为经典、无训练、无 GPU）
+所有方法 A、B 形状不一致时把 B 双线性缩放到 A；输出裁剪到 [0,255] 存 8-bit PNG。
+
+1. **LP（Laplacian Pyramid）**：4 层高斯-拉普拉斯金字塔。各细节层取 **max-abs** 选择系数，
+   顶层（残差低通）取 **均值**，逐层重建。`5x5` 二项核（[1 4 6 4 1]）下采样/上采样。
+2. **DWT（Discrete Wavelet Transform）**：`pywt`，小波 `db2`，2 层分解。低频近似取 **均值**，
+   各方向高频细节子带取 **max-abs**，`waverec2` 重建并裁回原尺寸。
+3. **DTCWT（Dual-Tree Complex Wavelet）**：`dtcwt` 包（内网镜像可安装），4 层。低通取均值，
+   6 方向复高通子带按 **复幅值 max-abs** 选择，逆变换重建。
+4. **GTF（Gradient Transfer Fusion，Ma et al., Inf. Fusion 2016）**：求解
+   `min_F ||F−B||_1 + λ·||∇F−∇A||_1`（B=IR 强度需保留，A=VIS 梯度需迁移），
+   λ=4，ADMM（20 次迭代）：数据项与梯度项各做 L1 软阈值分裂，F-子问题在 DCT（Neumann 边界）
+   域做泊松型求解。**这是论文原始目标的忠实实现**（非简化变体），命名为 GTF。
+5. **NSCT\*（近似）**：内网镜像无可用的纯 python 非下采样轮廓波（NSCT/contourlet）包，
+   故实现 **拉普拉斯金字塔多尺度 + 方向滤波器组近似**：对每个细节层用 4 个定向差分核
+   （0/45/90/135°）做方向分解，按方向能量 ∑|系数| 做 max 选择，顶层取均值后重建。
+   因非真正的 NSCT，标注为 **NSCT\***。
+
+## 2. 环境与运行
+- venv：`/ytech_m2v4_hdd/lizhongyin/venv/traditional`，用 `/opt/conda/bin/python3.11 -m venv` 创建，
+  通过 `zzz_base.pth` 链接基础 venv 的 `numpy/scipy/PIL`（base.pth trick，免重装）。
+- 安装（内网 PyPI 镜像，无需代理）：
+  ```
+  /opt/conda/bin/python3.11 -m venv /ytech_m2v4_hdd/lizhongyin/venv/traditional
+  echo "/ytech_m2v4_hdd/lizhongyin/venv/lib/python3.11/site-packages" \
+    > /ytech_m2v4_hdd/lizhongyin/venv/traditional/lib/python3.11/site-packages/zzz_base.pth
+  /ytech_m2v4_hdd/lizhongyin/venv/traditional/bin/pip install pywavelets dtcwt
+  ```
+  注：`dtcwt` 依赖把子 venv 内 numpy 降到 1.26.4（基础 venv 的 2.4.6 不被改动），运行时 scipy/pywt/dtcwt 均正常。
+- 运行（CPU，无需 GPU）：
+  ```
+  /ytech_m2v4_hdd/lizhongyin/venv/traditional/bin/python \
+    code/Graduation-Paper/bench/traditional/traditional_fusion.py --method ALL --task all
+  ```
+  5 方法 × 3 任务 × 128 张，总耗时约 75s。
+- 评测（基础 venv python）：每方法每任务跑 `eval_method.py`，写 `reports/<task>/<M>__{per_image,means}.csv`
+  并入各任务 `leaderboard.csv`。
+
+## 3. 结果（均值）
+
+### irvis（n=50，VIS-Y / IR）
+| 方法 | EN | MI | SD | SF | AG | SSIM | MS_SSIM | Qabf | VIF | SCD | Nabf | CC | FuncCorr | FuncSal |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| LP    | 6.225 | 1.874 | 30.671 | 11.072 | 4.369 | 0.696 | 0.757 | 0.628 | 0.053 | 1.388 | 0.131 | 0.627 | 0.511 | 0.939 |
+| DWT   | 5.933 | 2.181 | 23.839 | 9.632 | 3.991 | 0.718 | 0.797 | 0.472 | 0.040 | 1.254 | 0.109 | 0.656 | 0.476 | 1.072 |
+| DTCWT | 6.079 | 1.940 | 26.921 | 10.670 | 4.188 | 0.708 | 0.781 | 0.611 | 0.048 | 1.298 | 0.116 | 0.636 | 0.477 | 0.973 |
+| GTF   | 5.366 | 1.628 | 17.533 | 6.716 | 2.611 | 0.665 | 0.752 | 0.357 | 0.039 | 0.675 | 0.030 | 0.547 | 0.837 | 2.046 |
+| NSCT* | 6.173 | 1.924 | 29.569 | 10.733 | 4.170 | 0.698 | 0.757 | 0.603 | 0.050 | 1.329 | 0.079 | 0.620 | 0.494 | 0.909 |
+
+### medical（n=48，PET/SPECT-Y / MRI）
+| 方法 | EN | MI | SD | SF | AG | SSIM | MS_SSIM | Qabf | VIF | SCD | Nabf | CC | FuncCorr | FuncSal |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| LP    | 4.823 | 2.547 | 67.070 | 27.744 | 10.656 | 0.713 | 0.767 | 0.666 | 0.076 | 1.078 | 0.095 | 0.856 | 0.386 | 1.793 |
+| DWT   | 5.116 | 2.513 | 58.691 | 25.715 | 10.447 | 0.700 | 0.769 | 0.542 | 0.064 | 0.848 | 0.084 | 0.877 | 0.357 | 1.868 |
+| DTCWT | 5.353 | 2.413 | 62.092 | 26.986 | 10.511 | 0.663 | 0.762 | 0.654 | 0.058 | 0.878 | 0.091 | 0.861 | 0.325 | 1.788 |
+| GTF   | 5.316 | 2.754 | 65.722 | 13.419 | 4.975 | 0.673 | 0.742 | 0.285 | 0.045 | 0.702 | 0.018 | 0.819 | 0.161 | 1.348 |
+| NSCT* | 4.924 | 2.566 | 63.283 | 26.986 | 10.355 | 0.707 | 0.758 | 0.661 | 0.067 | 0.844 | 0.055 | 0.850 | 0.300 | 1.657 |
+
+### gfp_pc（n=30，GFP-Y / PC）
+| 方法 | EN | MI | SD | SF | AG | SSIM | MS_SSIM | Qabf | VIF | SCD | Nabf | CC | FuncCorr | FuncSal |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| LP    | 6.454 | 1.523 | 24.560 | 12.711 | 6.282 | 0.455 | 0.613 | 0.579 | 0.054 | 1.577 | 0.176 | 0.578 | 0.524 | 1.138 |
+| DWT   | 5.923 | 1.925 | 16.649 | 11.564 | 5.619 | 0.465 | 0.693 | 0.422 | 0.046 | 1.486 | 0.114 | 0.629 | 0.553 | 1.352 |
+| DTCWT | 6.188 | 1.647 | 20.120 | 12.252 | 5.983 | 0.474 | 0.676 | 0.586 | 0.050 | 1.583 | 0.145 | 0.607 | 0.483 | 1.133 |
+| GTF   | 6.351 | 2.055 | 21.764 |  9.079 | 4.232 | 0.462 | 0.602 | 0.327 | 0.036 | 0.947 | 0.053 | 0.446 | 0.150 | -0.079 |
+| NSCT* | 6.381 | 1.446 | 23.139 | 12.149 | 5.994 | 0.452 | 0.609 | 0.565 | 0.052 | 1.475 | 0.116 | 0.560 | 0.484 | 1.046 |
+
+明细 CSV：`fusion_bench/reports/<task>/<M>__{per_image,means}.csv`，均已并入各任务 `leaderboard.csv`。
+
+## 4. 分析
+- **LP / DTCWT / NSCT\*** 三者风格相近（同属多尺度细节-选择族），细节保真强：高 SD/SF/AG、高 Qabf，
+  适合作为"边缘/纹理保留"传统锚点。LP 最简单却综合最稳，NSCT\* 方向能量选择使 Nabf 更低（伪影更少）。
+- **DWT** 在 SSIM/MS_SSIM 上最高（db2 平滑、伪影少），但 Qabf/SD 偏低——边缘转移弱于无下采样的金字塔/复小波，
+  是典型的"可分离正交小波移变性"代价。
+- **GTF** 走另一条路线：L1 强度保 B + L1 梯度迁 A，结果 **Nabf 极低（0.02~0.05）、SCD/Qabf/SF 低**，
+  说明它显著抑制了对侧（A）的强度注入而偏向结构源 B；在 irvis 上 FuncCorr/FuncSal 反而最高（强热目标保留），
+  符合 GTF 原论文"突出红外目标、抑制可见光过曝"的定位。gfp_pc 上 GTF 的功能轴为负——GFP 荧光（A）信息被大幅抑制，
+  说明该域不适配 GTF 的强度-保 B 假设，为本课题"传统专精方法跨域失配"提供对照证据。
+- 评测尺子自洽：传统方法整体 SD/Qabf 低于深度 SOTA（对比 EXP-CMP-01 CDDFuse），可作为下界锚点，
+  支撑"学习式融合相对经典变换域方法的增益"这一论证。
+
+## 5. 交付与备注
+- **已交付 5 个方法**：LP、DWT、DTCWT、GTF（4 个忠实实现）+ NSCT\*（金字塔+方向滤波近似，已标注）。
+  无方法被跳过；`dtcwt` 包可从内网镜像安装，故 DTCWT 为真实实现而非近似。
+- 唯一近似项 NSCT\*：因缺乏可用纯 python NSCT 库（内网镜像无 `pycontourlet`/`nsct` 等可装包），
+  以"LP 多尺度 + 4 方向差分滤波 + 方向能量选择"近似，结果与 LP 同级、Nabf 更低，可作合理代理但不等同真 NSCT。
+- 全部 CPU 完成，未占用 GPU；未改动共享基础设施（eval_method.py / metrics / inputs）；未提交/推送。
