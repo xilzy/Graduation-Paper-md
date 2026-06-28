@@ -38,3 +38,20 @@
 ## 5. 下一步
 - 纳入 18 方法综合 leaderboard（见 `SUMMARY-comparison-18methods.md` / `fusion_bench/reports/COMPARISON.md`）做平均排名总评。
 - 若论文需要更强 DDFM IR-VIS 数字，可单独将 irvis 提到 100 步重采样复跑（成本×4）。
+
+
+## 指标修订（RGB-final 协议，2026-06-28）
+
+> 修订动机：原先对比方法直接对融合的 **Y 通道图** 计分。参照仓库 `infer_fusion.py` 与 原始 MATLAB `evaluation/main.m` 的约定——**彩色源任务的最终融合图是 Y 与源 CbCr 重组逆变换得到的 RGB 图，计分时对该 RGB 图做 `rgb2gray`（= PIL 'L'，BT.601）**。RGB 逆变换中的 uint8 截断会在高饱和色区（PET/SPECT 伪彩、GFP 绿色）改变灰度，因此直接用 Y 计分不严格。
+>
+> 修订范围：`output_mode=rgb` 的 **medical / gfp_pc** 两任务，对全部 18 方法的融合 Y 重组源 CbCr → RGB-final → `rgb2gray` 重算（RGB-final 图存于 `fusion_bench/fused_final/<方法>/<任务>/`）。**irvis 为 `output_mode=gray`（与 MDFNet 自身评测一致），维持灰度不变。** 重算后排名与原结论基本一致（个别名次 ±1）。
+
+修订后核心指标（medical/gfp_pc 已按 RGB-final 协议；irvis 灰度不变）：
+
+**DDFM**
+
+| 任务 | n | EN | MI | SD | SF | AG | SSIM | MS_SSIM | Qabf | VIF | SCD | Nabf | CC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| irvis | 50 | 6.090 | 2.357 | 28.537 | 6.358 | 2.392 | 0.704 | 0.787 | 0.316 | 0.036 | 1.446 | 0.076 | 0.661 |
+| medical | 48 | 5.165 | 3.512 | 67.417 | 18.588 | 7.301 | 0.715 | 0.772 | 0.546 | 0.085 | 1.410 | 0.023 | 0.889 |
+| gfp_pc | 30 | 6.692 | 2.223 | 27.766 | 9.136 | 4.429 | 0.488 | 0.655 | 0.433 | 0.046 | 1.873 | 0.180 | 0.636 |

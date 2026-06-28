@@ -73,3 +73,20 @@
 
 ## 6. 下一步
 - 与其余对比方法（CDDFuse、DenseFuse 已完成、SwinFusion/U2Fusion/IFCNN/SeAFusion/PIAFusion/LRRNet/DATFuse/DDFM + 传统 GTF/LP/DWT/NSCT）统一并入 leaderboard，做三任务平均排名综合对比；RFN-Nest 可作为"低伪影、温和、强源相关"一端的参照点。
+
+
+## 指标修订（RGB-final 协议，2026-06-28）
+
+> 修订动机：原先对比方法直接对融合的 **Y 通道图** 计分。参照仓库 `infer_fusion.py` 与 原始 MATLAB `evaluation/main.m` 的约定——**彩色源任务的最终融合图是 Y 与源 CbCr 重组逆变换得到的 RGB 图，计分时对该 RGB 图做 `rgb2gray`（= PIL 'L'，BT.601）**。RGB 逆变换中的 uint8 截断会在高饱和色区（PET/SPECT 伪彩、GFP 绿色）改变灰度，因此直接用 Y 计分不严格。
+>
+> 修订范围：`output_mode=rgb` 的 **medical / gfp_pc** 两任务，对全部 18 方法的融合 Y 重组源 CbCr → RGB-final → `rgb2gray` 重算（RGB-final 图存于 `fusion_bench/fused_final/<方法>/<任务>/`）。**irvis 为 `output_mode=gray`（与 MDFNet 自身评测一致），维持灰度不变。** 重算后排名与原结论基本一致（个别名次 ±1）。
+
+修订后核心指标（medical/gfp_pc 已按 RGB-final 协议；irvis 灰度不变）：
+
+**RFN-Nest**
+
+| 任务 | n | EN | MI | SD | SF | AG | SSIM | MS_SSIM | Qabf | VIF | SCD | Nabf | CC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| irvis | 50 | 6.097 | 2.447 | 28.309 | 5.878 | 2.134 | 0.711 | 0.792 | 0.382 | 0.046 | 1.490 | 0.023 | 0.670 |
+| medical | 48 | 5.604 | 2.785 | 69.438 | 8.809 | 3.737 | 0.643 | 0.759 | 0.181 | 0.041 | 1.417 | 0.027 | 0.883 |
+| gfp_pc | 30 | 6.773 | 2.153 | 29.983 | 6.952 | 3.630 | 0.469 | 0.649 | 0.333 | 0.044 | 1.850 | 0.145 | 0.638 |

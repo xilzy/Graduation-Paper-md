@@ -5,8 +5,9 @@
 - 逐方法过程记录见 `EXP-CMP-01..14`；机器可读结果见 `fusion_bench/reports/<task>/{leaderboard,comparison}.csv` 与 `fusion_bench/reports/COMPARISON.md`。
 
 ## 1. 复现基础设施（统一、可比、可复算）
-- **标准化输入**：三任务测试对统一导出 8-bit 灰度 `fusion_bench/inputs/<task>/{A,B}/<stem>.png`（A=彩色/功能源，B=灰度/结构源）。规模：irvis 50（MSRS 测试均匀抽样）、medical 48、gfp_pc 30。
-- **统一输出契约**：每方法把融合图按 stem 写到 `fusion_bench/fused/<Method>/<task>/`。
+- **标准化输入**：三任务测试对统一导出 8-bit 灰度 `fusion_bench/inputs/<task>/{A,B}/<stem>.png`（A=彩色/功能源，B=灰度/结构源），并存彩色源 `cbcr/<stem>.npy`。规模：irvis 50（MSRS 测试均匀抽样）、medical 48、gfp_pc 30。
+- **统一输出契约**：每方法把融合 Y 按 stem 写到 `fusion_bench/fused/<Method>/<task>/`。
+- **RGB 计分协议（重要，2026-06-28 修订）**：参照仓库 `infer_fusion.py` 与原始 MATLAB `evaluation/main.m`——**彩色源任务（`output_mode=rgb`：medical、gfp_pc）的最终融合图 = 融合 Y 与源 CbCr 重组逆变换得到的 RGB 图，计分时对该 RGB 做 `rgb2gray`（=PIL 'L'，BT.601）**。RGB 逆变换的 uint8 截断会在高饱和色区改变灰度，故不能直接用 Y 计分。RGB-final 图存 `fusion_bench/fused_final/<Method>/<task>/`。**irvis 为 `output_mode=gray`（与 MDFNet 自身评测一致），保持灰度。** 全部 18 方法已按此协议重算 medical/gfp_pc。
 - **统一评测**：共享 `metrics/` 包计算核心 9 项（EN/MI/SD/SF/AG/SSIM/MS_SSIM/Qabf/VIF）+ 诊断（SCD/Nabf/CC）+ 功能轴（FuncCorr/FuncSal），逐图 CSV→均值→任务级 leaderboard→平均排名 `comparison.csv`。
 - **环境隔离**：每方法独立 venv 于 `/ytech_m2v4_hdd/lizhongyin/venv/<method>`（base.pth 继承 torch2.8，私装方法依赖），不污染系统 python。
 - **算力**：8×H800，每方法子 agent 指定单卡并行复现；外网经代理。
@@ -36,15 +37,15 @@
 
 > 论文 `initial_paper.tex` 列出的对比方法（NSCT/MSTSR/CNN/IFCNN/EMFusion/MURF/MATR/DPCN…）中，IFCNN、MURF、NSCT 已直接复现；其余传统/特定方法以本批 LP/DWT/DTCWT/GTF/NSCT* + 深度 SOTA 覆盖同一指标族。
 
-## 3. 平均排名总评（核心 9 指标，方向感知，越低越好；18 方法）
+## 3. 平均排名总评（核心 9 指标，方向感知，越低越好；18 方法；RGB-final 协议）
 
-**IR-VIS (MSRS, n=50)** — Top: CDDFuse(3.56) · SeAFusion(4.89) · SwinFusion(5.00) · PIAFusion(5.22) · IFCNN(5.56)。尾部 U2Fusion/GTF（偏暗、低对比）。
+**IR-VIS (MSRS, n=50，灰度)** — Top: CDDFuse(3.56) · SeAFusion(4.89) · SwinFusion(5.00) · PIAFusion(5.22) · IFCNN(5.56)。尾部 U2Fusion/GTF（偏暗、低对比）。
 
-**医学 (Harvard, n=48)** — Top: CDDFuse(4.22) · IFCNN(5.44) · SwinFusion(5.44) · PIAFusion(6.89) · DenseFuse(7.22)；DDFM(7.67) 在医学域明显优于其 IR-VIS 表现。
+**医学 (Harvard, n=48，RGB-final)** — Top: CDDFuse(4.22) · IFCNN(5.33) · SwinFusion(5.67) · PIAFusion(6.89) · DenseFuse(7.22)；DDFM(8.22) 在医学域明显优于其 IR-VIS 表现。
 
-**显微 GFP-PC (n=30)** — Top: SeAFusion(5.22) · PIAFusion(6.11) · SwinFusion(6.22) · TarDAL(6.89) · IFCNN(7.11)；CDDFuse(7.44) 因用医学权重跨域、Nabf 偏高而退位。
+**显微 GFP-PC (n=30，RGB-final)** — Top: SeAFusion(5.22) · SwinFusion(6.11) · PIAFusion(6.33) · TarDAL(6.89) · IFCNN(7.00)；CDDFuse(7.33) 因用医学权重跨域、Nabf 偏高而退位。
 
-完整逐指标表见 `fusion_bench/reports/COMPARISON.md` 与各 `comparison.csv`。
+> 注：medical/gfp_pc 为 RGB-final 协议重算结果（见 §1）；与旧的"直接 Y 计分"相比，单指标有小幅变化（如 CDDFuse medical MI 3.61→3.73、SD 81.3→79.5），平均排名顺序基本不变（个别名次 ±1）。完整逐指标表见 `COMPARISON-leaderboard.md` 与各 `comparison.csv`。
 
 ## 4. 跨方法观察（为本课题服务）
 - **没有单一方法三模态通吃**：CDDFuse 统治 IR-VIS/医学，但 GFP-PC 让位于 SeAFusion/PIAFusion——印证 MASTER_PLAN 的"通用 vs 专精"动机与 MoE 任务特异路由的必要性。

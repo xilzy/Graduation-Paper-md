@@ -76,3 +76,20 @@ export CUDA_VISIBLE_DEVICES=2
 - IR-VIS、医学上指标稳健（SSIM≈0.72–0.73、Qabf 0.62–0.68、Nabf 较低 0.09–0.13），作为"通用网络"对比锚点表现合理，但 MI/VIF 等信息保真轴弱于 CDDFuse（如 medical MI 2.87 vs CDDFuse 3.61），符合 IFCNN 早期通用模型 vs 后续专精 SOTA 的预期差距。
 - GFP-PC 跨域：SSIM 0.514、Nabf 0.197 偏高、MI 最低（2.29），说明显微域（GFP 大面积近黑背景）对该通用模型也存在分布差异，为本课题"通用 vs 专精/跨域泛化"动机提供又一对照证据。
 - 评测尺子自洽：MAX 融合倾向保留双源高响应，SF/AG（细节/梯度）在 medical 上较高（29.47/11.52），符合 MAX 策略特性。
+
+
+## 指标修订（RGB-final 协议，2026-06-28）
+
+> 修订动机：原先对比方法直接对融合的 **Y 通道图** 计分。参照仓库 `infer_fusion.py` 与 原始 MATLAB `evaluation/main.m` 的约定——**彩色源任务的最终融合图是 Y 与源 CbCr 重组逆变换得到的 RGB 图，计分时对该 RGB 图做 `rgb2gray`（= PIL 'L'，BT.601）**。RGB 逆变换中的 uint8 截断会在高饱和色区（PET/SPECT 伪彩、GFP 绿色）改变灰度，因此直接用 Y 计分不严格。
+>
+> 修订范围：`output_mode=rgb` 的 **medical / gfp_pc** 两任务，对全部 18 方法的融合 Y 重组源 CbCr → RGB-final → `rgb2gray` 重算（RGB-final 图存于 `fusion_bench/fused_final/<方法>/<任务>/`）。**irvis 为 `output_mode=gray`（与 MDFNet 自身评测一致），维持灰度不变。** 重算后排名与原结论基本一致（个别名次 ±1）。
+
+修订后核心指标（medical/gfp_pc 已按 RGB-final 协议；irvis 灰度不变）：
+
+**IFCNN**
+
+| 任务 | n | EN | MI | SD | SF | AG | SSIM | MS_SSIM | Qabf | VIF | SCD | Nabf | CC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| irvis | 50 | 6.336 | 2.876 | 34.088 | 11.535 | 4.443 | 0.722 | 0.783 | 0.617 | 0.054 | 1.526 | 0.132 | 0.629 |
+| medical | 48 | 5.183 | 2.948 | 67.529 | 29.071 | 11.284 | 0.731 | 0.767 | 0.671 | 0.068 | 1.078 | 0.083 | 0.851 |
+| gfp_pc | 30 | 6.373 | 2.266 | 22.112 | 12.990 | 6.440 | 0.513 | 0.671 | 0.567 | 0.055 | 1.555 | 0.200 | 0.558 |

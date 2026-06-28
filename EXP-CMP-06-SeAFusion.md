@@ -80,3 +80,20 @@ done
 
 ## 6. 结论
 SeAFusion 预训练 `FusionNet` 在统一基准三任务上全部跑通（irvis 50 / medical 48 / gfp_pc 30，共 128 张），指标已并入 leaderboard。本域（IR-VIS）质量与边缘保持优秀，跨域（医学、显微）随分布差异递减，可作为对比基线之一。未做训练、未改共享基础设施、未 push。
+
+
+## 指标修订（RGB-final 协议，2026-06-28）
+
+> 修订动机：原先对比方法直接对融合的 **Y 通道图** 计分。参照仓库 `infer_fusion.py` 与 原始 MATLAB `evaluation/main.m` 的约定——**彩色源任务的最终融合图是 Y 与源 CbCr 重组逆变换得到的 RGB 图，计分时对该 RGB 图做 `rgb2gray`（= PIL 'L'，BT.601）**。RGB 逆变换中的 uint8 截断会在高饱和色区（PET/SPECT 伪彩、GFP 绿色）改变灰度，因此直接用 Y 计分不严格。
+>
+> 修订范围：`output_mode=rgb` 的 **medical / gfp_pc** 两任务，对全部 18 方法的融合 Y 重组源 CbCr → RGB-final → `rgb2gray` 重算（RGB-final 图存于 `fusion_bench/fused_final/<方法>/<任务>/`）。**irvis 为 `output_mode=gray`（与 MDFNet 自身评测一致），维持灰度不变。** 重算后排名与原结论基本一致（个别名次 ±1）。
+
+修订后核心指标（medical/gfp_pc 已按 RGB-final 协议；irvis 灰度不变）：
+
+**SeAFusion**
+
+| 任务 | n | EN | MI | SD | SF | AG | SSIM | MS_SSIM | Qabf | VIF | SCD | Nabf | CC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| irvis | 50 | 6.590 | 3.983 | 41.627 | 10.903 | 4.112 | 0.718 | 0.765 | 0.668 | 0.073 | 1.725 | 0.122 | 0.616 |
+| medical | 48 | 5.732 | 2.986 | 76.278 | 23.839 | 9.457 | 0.662 | 0.751 | 0.633 | 0.053 | 1.525 | 0.071 | 0.853 |
+| gfp_pc | 30 | 6.864 | 3.314 | 30.080 | 12.853 | 6.504 | 0.506 | 0.605 | 0.578 | 0.070 | 1.398 | 0.266 | 0.508 |

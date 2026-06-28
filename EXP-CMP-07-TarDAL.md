@@ -77,3 +77,20 @@ cd code/ref/TarDAL
 
 ## 6. 下一步
 - 其余对比方法按同一契约复现，统一进 leaderboard 后做平均排名综合对比。
+
+
+## 指标修订（RGB-final 协议，2026-06-28）
+
+> 修订动机：原先对比方法直接对融合的 **Y 通道图** 计分。参照仓库 `infer_fusion.py` 与 原始 MATLAB `evaluation/main.m` 的约定——**彩色源任务的最终融合图是 Y 与源 CbCr 重组逆变换得到的 RGB 图，计分时对该 RGB 图做 `rgb2gray`（= PIL 'L'，BT.601）**。RGB 逆变换中的 uint8 截断会在高饱和色区（PET/SPECT 伪彩、GFP 绿色）改变灰度，因此直接用 Y 计分不严格。
+>
+> 修订范围：`output_mode=rgb` 的 **medical / gfp_pc** 两任务，对全部 18 方法的融合 Y 重组源 CbCr → RGB-final → `rgb2gray` 重算（RGB-final 图存于 `fusion_bench/fused_final/<方法>/<任务>/`）。**irvis 为 `output_mode=gray`（与 MDFNet 自身评测一致），维持灰度不变。** 重算后排名与原结论基本一致（个别名次 ±1）。
+
+修订后核心指标（medical/gfp_pc 已按 RGB-final 协议；irvis 灰度不变）：
+
+**TarDAL**
+
+| 任务 | n | EN | MI | SD | SF | AG | SSIM | MS_SSIM | Qabf | VIF | SCD | Nabf | CC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| irvis | 50 | 6.378 | 2.601 | 36.202 | 10.193 | 4.038 | 0.495 | 0.727 | 0.423 | 0.041 | 1.540 | 0.176 | 0.637 |
+| medical | 48 | 5.786 | 2.974 | 60.972 | 21.467 | 7.827 | 0.261 | 0.685 | 0.425 | 0.046 | 0.628 | 0.048 | 0.834 |
+| gfp_pc | 30 | 7.166 | 2.612 | 39.837 | 14.312 | 6.392 | 0.475 | 0.565 | 0.438 | 0.049 | 1.545 | 0.289 | 0.567 |
