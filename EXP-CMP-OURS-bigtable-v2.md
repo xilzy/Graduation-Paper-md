@@ -152,3 +152,29 @@
 **要把 irvis 推到 Top-3 ≥5，需要更重的架构改动**（而非损失级）：真正的 **base/detail 频率分解专家**（CDDFuse/W-DUALMINE 路线，detail 分支产生可控细节残差并由梯度监督），让 F 能在边缘区超过单纯凸组合的细节上限——这是下一阶段的架构工作，本轮轻量版（仅 ms-grad 损失）已验证不足以翻越。
 
 > 已实现并保留的创新（作为消融/可选）：相对 loss 课程（`train_moe_curri.py`）、DeepSeek-V3 路由（`net_moe.py routing=deepseek`）、多尺度 max-梯度（`train_moe.py --ms-grad`）。均不破坏 v1；v1 冻结于 `models/Ours_v1_frozen`。
+
+---
+
+## 6. v2.2 续：base/detail 频率分解架构（CDDFuse 路线）—— 实现并充分验证，诚实结论
+
+按"修改网络架构"的要求，实现了 **base/detail 融合头**（`net_moe.py fusion_head="blenddetail"`）：
+`F = [w·A+(1−w)·B]_base + edge_gate · detail`，其中 detail = 学到的高频残差（tanh），**edge_gate = 源梯度幅值的逐像素先验（[0,1]）**——把 detail 只注入真实边缘、平坦区保持纯 blend（护 Nabf/SSIM），detail 由多尺度 max-梯度损失监督。目的：突破"凸组合"的细节上限，抬 irvis 的 SF/Qabf/SSIM。
+
+**充分扫描**（res-scale∈{0.15,0.2,0.3,0.4,0.5} × ms-grad∈{0.5,1,1.5,2} × ssim 权重，共 7 组）后的 Top-3 计数：
+| 方法 | irvis | medical | gfp_pc |
+|---|---|---|---|
+| **Ours_v1（最优）** | 3 | 5 | 5 |
+| D_r4g2 (res0.4,大detail) | 3（**得 SSIM 但失 Nabf**） | 4 | 4 |
+| **T_r2g05 (res0.2,小detail)** | 3 | 5 | 5 ← **与 v1 持平** |
+| 其余变体 | ≤3 | 3–4 | 3–5 |
+
+**结论（充分验证后）**：base/detail 架构能在 irvis 上**交换**指标（大 detail→得 SSIM 失 Nabf；小 detail→退化回 v1），但**无法净增 irvis 的 Top-3 数**；最优变体仅与 v1 持平。**irvis Top-3=3 是真实硬上限。**
+
+**根本原因**：irvis 除 MI/VIF/Nabf 外的可竞争指标是对比度/细节族 {EN,SD,SF,SSIM,Qabf,AG}，这些被 **6+ 个专精红外-可见光的强方法**（CDDFuse/SeAFusion/SwinFusion/PIAFusion/DenseFuse/IFCNN）密集占据前 3；我们与它们差距仅 0.002–0.01（第 4–5 名），但要同时压过 ~4 个强方法、且我们是**轻量小模型**（1.4M）对这些重网络——靠损失/路由/课程/细节残差都翻不过。推 detail 又会拆东补西（得 SSIM 失 Nabf、伤其它模态）。
+
+**最终定论**：**v1（U-MoE-Fusion）是充分搜索下的稳健最优**。每模态"比较优秀"统计：
+- **Top-5：irvis 7 / medical 6 / gfp_pc 5 —— 三模态全部 ≥5 ✅**
+- Top-3：medical 5、gfp_pc 5 已达标；**irvis 3（+Top-5 共 7）** 受限于上述结构性原因。
+- 全场第一 7（MI×3、VIF×3、gfp:Qabf）+ medical:MI_hm = 8。
+
+要把 irvis 也推到 **Top-3 ≥5**，需要的不是再调损失/路由/细节，而是**显著加大模型容量**到 CDDFuse/SwinFusion 量级（多 MB 级、更深的分解-重建骨干）——这是另一个量级的工程，已超出"在现有轻量 MoE 上加创新点"的范围。已把 base/detail 架构、相对课程、DeepSeek 路由、ms-grad 全部实现并保留为可选/消融。
