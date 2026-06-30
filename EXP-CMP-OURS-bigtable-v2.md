@@ -126,3 +126,29 @@
 - 创新代码：`train_moe_curri.py`（课程）、`net_moe.py routing="deepseek"`（DeepSeek 路由，含 EMA 偏置更新）、`train_moe.py --routing`（公平消融）。
 - 大表生成：`bench/big_table.py`；评测流水线见 `EVALUATION-metrics.md`。
 - 所有实验在跳板机(ge85-68)运行；文件遵循"只新增不删除"。
+
+---
+
+## 5. v2.1 续：修正课程 + Addition B（多尺度 max-梯度）—— 诚实结论
+
+把"指标优秀"判据收紧到 **Top-3**（目标每模态 ≥5），并按 §3 的修正方向继续尝试：
+
+- **创新 A 修正（相对 loss 课程）** `train_moe_curri.py`：不再用绝对 loss，改用**相对于 warmup 末值的 loss 降幅**驱动配额（降得少=落后=多给），cap 收紧到 1.2。
+- **REF Addition B（多尺度 max-梯度损失）** `train_moe.py --ms-grad`：`‖|∇F| − max(|∇A|,|∇B|)|‖` 多尺度，意在抬 SF/Qabf/AG/EN（治细节短板）。跑了 ms-grad∈{1,2}、配合 ssim/intensity 加权、以及"课程+ms-grad"组合共 4 组。
+
+**结果（Top-3 计数，vs v1 的 irv3/med5/gfp5）**：
+| 方法 | irvis | medical | gfp_pc |
+|---|---|---|---|
+| **Ours_v1（最优）** | **3** | **5** | **5** |
+| G_msg1 (ms-grad1) | 2 | 3 | 4 |
+| G_msg2ss (ms-grad2+ssim) | 3 | 2 | 3 |
+| G_msgint (ms-grad+int) | 2 | 3 | — |
+| G_curri_ms (相对课程+ms-grad) | **0** | 5 | 3 |
+
+**结论：本轮所有变体均未超过 v1，多数反而下降。** 原因：① ms-grad 的过度锐化与"决策图凸组合"目标冲突——F=w·A+(1−w)·B 的梯度本就受限于两源，强推梯度会牺牲 v1 赢的 SSIM/MI/Nabf/VIF（平衡/信息族），得不偿失；② 相对 loss 课程仍把配额从 irvis 移走（irvis 相对降幅看似快→被减），伤 irvis。
+
+**当前定论**：**v1 仍是最优方法**。**3 个模态中 medical、gfp_pc 已满足 Top-3 ≥5；irvis 为 Top-3=3 / Top-5=7**。irvis 的 EN/SD/SSIM/Qabf 均为第 4–5 名、差距仅 0.002–0.01，但被 CDDFuse/SwinFusion/DenseFuse/SeAFusion 等**专精 IR-VIS 的强方法**压住，靠损失项/课程/路由这些轻量手段无法翻越。
+
+**要把 irvis 推到 Top-3 ≥5，需要更重的架构改动**（而非损失级）：真正的 **base/detail 频率分解专家**（CDDFuse/W-DUALMINE 路线，detail 分支产生可控细节残差并由梯度监督），让 F 能在边缘区超过单纯凸组合的细节上限——这是下一阶段的架构工作，本轮轻量版（仅 ms-grad 损失）已验证不足以翻越。
+
+> 已实现并保留的创新（作为消融/可选）：相对 loss 课程（`train_moe_curri.py`）、DeepSeek-V3 路由（`net_moe.py routing=deepseek`）、多尺度 max-梯度（`train_moe.py --ms-grad`）。均不破坏 v1；v1 冻结于 `models/Ours_v1_frozen`。
