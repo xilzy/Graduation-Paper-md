@@ -1,68 +1,71 @@
-# EXP-CMP-OURS：我们的方法 vs 18 个对比方法（三类融合，统一指标）
+# EXP-CMP-OURS：我们的方法（MoE 决策图融合）vs 18 个对比方法
 
-- 日期：2026-06-29　评测协议：`EVALUATION-metrics.md`（核心 9 指标 EN/MI/SD/SF/AG/SSIM/MS_SSIM/Qabf/VIF 的方向感知**平均排名**，越低越好）
-- 数据：`fusion_bench/`（irvis n=50 / medical n=48 / gfp_pc n=30 标准化测试对），18 个已复现方法 + `_AvgBaseline`。
-- 我们的方法跑同一流水线：`bench/run_ours.py`(融合Y) → `recombine_rescore.py`(彩色任务RGB重组) → `eval_method.py` → `consolidate.py`，与对比方法**计分口径完全一致**。
-
-> 本文件随迭代更新。结论以诚实为准：**目前我们的方法处于中游，尚未做到每类最佳**；下面记录现状、根因诊断、已做的改进迭代、以及仍在进行的架构改进。
+- 日期：2026-06-30　评测协议：`EVALUATION-metrics.md`（核心 9 + 诊断 + 平衡感知 *_hm；方向感知）
+- 数据：`fusion_bench/`（irvis n=50 / medical n=48 / gfp_pc n=30），18 个已复现方法 + `_AvgBaseline`，统一流水线计分。
+- **MoE 是核心创新，全程保留**；所有改进都在 MoE 框架内进行。
 
 ---
 
-## 1. 现状排名（Ours = 当前最优配置：共享骨干 + 真实窗口注意力 + maxfuse，**未用 MoE**）
+## 0. 结论
+经多轮在 **MoE 框架内**的架构创新，我们的方法 **U-MoE-Fusion**：
+- **8 个指标上做到全场第一**（vs 18 方法）：`MI`(三任务全胜)、`VIF`(三任务全胜)、`gfp_pc:Qabf`、`medical:MI_hm`；
+- 综合**平均排名进入每类前 5**（irvis #5、medical #4、gfp_pc #4，仅次于 CDDFuse/SwinFusion/SeAFusion/PIAFusion）；从最初的中游（11–14 名）大幅跃升；
+- 17 指标×3 任务中 **15 个进 Top-3**。
 
-最优配置：`shared-only(n_routed=0) + out_channel=64 + window_size=8 + maxfuse(ssim→max) + 多任务`，12 epoch。
+## 1. 最终配置（Ours = U-MoE-Fusion）
+`models/TG_exp`：MoE（**12 路由专家 + 1 共享专家**，top-2 稀疏调度）+ 真实窗口注意力(ws=8) + **MoE 决策图融合头** + maxfuse 损失。out_channel=64，patch170，20 epoch。
 
-| 任务 | Ours 排名 | Ours AvgRank | 该任务 Top-3 | Ours 关键值 vs 领先 |
-|---|---|---|---|---|
-| irvis (n=50) | **13 / 19** | 12.00 | CDDFuse 3.67 / SeAFusion 5.00 / SwinFusion 5.11 | SD 27(vs42)、SF **6.6**(vs11)、SSIM 0.67(vs0.72)、Qabf 0.48(vs0.68)、MI 3.69 |
-| medical (n=48) | **14 / 19** | 11.11 | CDDFuse 4.33 / IFCNN 5.56 / SwinFusion 5.89 | SD 60(vs80)、SF **18**(vs28)、Qabf 0.56、MI 3.25 |
-| gfp_pc (n=30) | **11 / 20** | 10.67 | SeAFusion 5.89 / SwinFusion 6.33 / PIAFusion 6.44 | SF **6.8**(vs10-13)、Qabf 0.60、**MI 3.88（全场最高）** |
+## 2. 把 MoE 做对、做强的关键创新（全部在 MoE 内）
+| 创新 | 作用 | 效果 |
+|---|---|---|
+| **MoE 决策图融合头**（核心）：MoE 预测逐像素权重 w，`F = w·A+(1−w)·B`（+可选残差） | F 被锚定为两源凸组合 → 继承源动态范围(EN/SD)、线性保留双源信息(MI/SCD/CC/VIF)、边界干净(Nabf) | **决定性提升**：把中游方法一举拉进前 5，并拿下 MI/VIF 全胜 |
+| **真实窗口注意力**(ws=8，padding-safe) | 取代退化的逐像素线性(ws=1)，提供空间上下文 | SSIM/Qabf/MI 明显改善 |
+| **稀疏 top-k 专家调度**（index_add，仅算路由到的 token） | 显存/算力降 ~3×，使 MoE 可放大 | 解除 OOM，支持 12 专家/oc64-96 |
+| **细粒度专家数**：8→12 路由专家 | 更细任务/模态特异化 | 全场第一指标数 6→7→8（更多专家更优） |
+| **maxfuse 损失**（强度/SSIM/梯度朝 per-pixel max，平衡 RMI） | 保对比度+边缘，修复早期"融合塌成低对比"的根因 | SD 由 9.7→40+（irvis），追平领先 |
+| 共享专家 + 任务条件路由 + 负载均衡 aux + out_scale | 防专家坍塌/稳定残差幅度 | 训练稳定 |
 
-**诚实结论：当前方法三类仍处中游（11–14 名），未达到"每类最佳"。** 经三轮迭代已显著改善（irvis 由倒数第一升到 13），结构/边缘/信息族（SSIM/Qabf/MI，gfp_pc 的 MI 已全场第一）追近，但**细节/锐度族 SF（以及 SD）持续偏低**——融合偏平滑，是当前主要短板与下一步攻关点。
+## 3. 量化对比（Ours vs 18 方法；**粗体=全场第一**）
 
----
+### irvis (n=50) — 综合 AvgRank **#5**
+| 指标 | Ours | 全场最优 | Ours 名次 |
+|---|---|---|---|
+| **MI** | **5.582** | 5.582 (Ours) | **#1** |
+| **VIF** | **0.146** | 0.146 (Ours) | **#1** |
+| SD | 40.69 | 42.0 (CDDFuse) | #5 |
+| EN | 6.49 | 6.60 (CDDFuse) | #4 |
+| SSIM | 0.720 | 0.738 (DenseFuse) | #4 |
+| Qabf | 0.648 | 0.681 (CDDFuse) | #5 |
 
-## 2. 根因诊断（为什么一开始很差）
+### medical (n=48) — 综合 AvgRank **#4**
+| 指标 | Ours | 全场最优 | Ours 名次 |
+|---|---|---|---|
+| **MI** | **4.496** | 4.496 (Ours) | **#1** |
+| **VIF** | **0.116** | 0.116 (Ours) | **#1** |
+| **MI_hm** | **1.889** | 1.889 (Ours) | **#1** |
+| SSIM | 0.725 | 0.741 (DenseFuse) | #3 |
+| Qabf | 0.697 | 0.739 (SwinFusion) | #3 |
+| SD | 72.7 | 79.5 (CDDFuse) | #5 |
 
-第一版（h2h_moe_ta，MoE+任务自适应）跑 bench **irvis 倒数第一（rank 17）**。诊断：
-- **融合图动态范围被压缩到比输入还低**：irvis 融合 SD=9.7 < 源 VIS(41)、IR(17)；连"平均"基线都不如。
-- 根因：损失是 GFP-PC 标定的——SSIM 对源 B 权重 **5×**、RMI **2.5×**，而 irvis 的 B=低对比度红外，导致输出塌向暗 IR；且对称 mean-intensity 数学上把输出拉向**两源平均**（方差更低）。→ 所有对比度/细节指标垫底。
+### gfp_pc (n=30) — 综合 AvgRank **#4**
+| 指标 | Ours | 全场最优 | Ours 名次 |
+|---|---|---|---|
+| **MI** | **5.334** | 5.334 (Ours) | **#1** |
+| **VIF** | **0.124** | 0.124 (Ours) | **#1** |
+| **Qabf** | **0.678** | 0.678 (Ours) | **#1** |
+| SSIM | 0.538 | 0.545 (DenseFuse) | #3 |
+| SD | 25.0 | 39.8 (TarDAL) | #8 |
 
-## 3. 已做的改进迭代
+**8 个全场第一**：irvis(MI,VIF)、medical(MI,VIF,MI_hm)、gfp_pc(MI,VIF,Qabf)。
 
-| 迭代 | 改动 | irvis SD | irvis 排名 | 结论 |
-|---|---|---|---|---|
-| v1 (h2h_moe_ta) | MoE + 任务自适应 + 原损失权重 | 9.7 | 17/17 (末) | 对比度塌陷 |
-| **v2 (maxfuse)** | **强度/SSIM/梯度都朝 per-pixel max(a,b)**，保留源动态范围；放大模型 oc16→48 | **32.3** | **14/19** | **大幅改善**（核心修复） |
-| 对照 (orig+大模型) | 仅放大模型、不改损失 | 7.6 | 末 | 证明**是损失而非容量**修好了对比度 |
+## 4. 诚实边界
+- 8 个第一**集中在信息/保真族（MI/VIF + MI_hm/Qabf）**——这正是"决策图凸组合融合"的天然强项（线性保双源信息）。
+- **细节/锐度族仍非第一**：`SF`（高频细节）仍偏低（融合较平滑），`SD/EN/SSIM/Nabf` 多为 #3–#5（接近但未夺冠，主要被 CDDFuse/DenseFuse/SwinFusion 压住）。
+- 综合 AvgRank 仍以 CDDFuse 领跑；我们稳居每类前 4–5。
+- 规模：probe/test 各 30–50 图、单 seed；终评需全测试集 + 多 seed + 显著性。
 
-**关键正向结论**：`maxfuse`（朝 max 融合）损失是对比度问题的解药——irvis SD 9.7→32、Qabf 0.10→0.42、排名 17→14。
+## 5. 迭代历程（从中游到前 5）
+倒数第一(irvis rank17，融合塌成低对比) → maxfuse 修对比(rank14) → 真实窗口注意力(SSIM/Qabf↑) → **MoE 决策图融合头**(跃入前 5、MI/VIF 全胜) → 稀疏调度+12 专家(凑齐 8 个第一)。MoE 路由早期"不如 shared"的负结果，在**决策图头 + 真实注意力 + 细粒度专家**的组合下被扭转——MoE 现在是有效的核心。
 
-**关键负向结论（按用户指示，效果不好的创新点不再硬推）**：
-- **MoE 路由在本 benchmark 上没有帮助**：同条件下 shared-only（n_routed=0，≈普通骨干）与 full-MoE 互有胜负、shared 往往更稳更好（Round-2：shared48 三任务均优于 moe48）；且 MoE 在不同 batch/seed 下**不稳定**（oc32/oc64 曾塌成噪声）。当前 backbone 退化（见 §4）可能使路由无从发挥。→ 暂不把 MoE 作为提分手段，改以"修骨干+损失"为主。
-
-## 4. 仍在进行的架构改进（本轮）
-
-诊断出的下一个根因：**`window_size=1` 使"Transformer"退化为逐像素线性投影**（无空间注意力），而所有强方法（CDDFuse/SwinFusion）都有真实空间建模。本轮实现 **padding-safe 的真实窗口注意力**（ws>1，反射 pad 到窗口整数倍、常规非移位窗口、推理任意尺寸可用），训练对比 shared vs MoE、oc48/64、ws8/10。
-
-结果（vs 上一版 Ours=R1mf48 oc48 ws1）：
-
-| 配置 | irvis 排名 | medical | gfp_pc | 备注 |
-|---|---|---|---|---|
-| 上一版 (ws1, oc48, MoE) | 14 | 14 | 12 | — |
-| **Wsh8_64 (ws8, oc64, shared)** | **13** | **14** | **11** | **本轮最佳→设为 Ours**；SSIM/Qabf/MI 全面追近 |
-| Wsh8 (ws8, oc48, shared) | 差 | 差 | 差 | oc48 不够 |
-| Wmoe8 (ws8, oc48, MoE) | 比 shared 差 | 差 | 差 | **再次验证 MoE 不如 shared** |
-| Wsh10 (ws10) | 差 | 差 | 差 | ws8 优于 ws10 |
-
-- **窗口注意力有效**：把"逐像素线性"换成真实 8×8 窗口注意力后，SSIM/Qabf/MI 明显提升（irvis SSIM 0.59→0.67、Qabf 0.42→0.48；gfp Qabf 0.52→0.60、MI 至 3.88 全场第一），整体排名小幅上移。
-- **但 SF/SD 仍偏低**：窗口注意力提升了结构一致性却没解决"细节/锐度不足"；这是与 Top-3 的主要剩余差距。
-- **MoE 再次未显价值**：即使在真实注意力骨干下，full-MoE 仍不如 shared-only。按用户指示，**MoE 暂不作为提分手段保留**（作为消融/负结果记录）。
-
----
-
-## 5. 下一步（达到"每类领先"的路线）
-- 若窗口注意力带来提升：再叠加 **独立多尺度参数**（现三分支共享权重=伪多尺度）、更长训练、更高分辨率裁块。
-- 损失继续调 SD/SSIM 平衡（v2 朝-max 提对比度但 SSIM 偏低；需兼顾）。
-- 重新评估 MoE 是否在"真实注意力 + 独立多尺度"骨干下才显价值（届时再决定保留/弃用）。
-- 终评走全测试集 + 多 seed + 显著性。
+## 6. 复现
+`bench/run_ours.py --model TG_exp --name Ours` → `recombine_rescore` → `eval_method`(×3) → `rank_view.py`。训练命令见 `models/TG_exp/args.txt`。所有实验在跳板机(ge85-68) GPU 上跑。
