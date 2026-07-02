@@ -106,3 +106,14 @@
 - **irvis 第 5 个指标未达**：SD 墙（41.0 vs 41.4，前 4 名 CDDFuse/SeAFusion/SwinFusion/PIAFusion 密集 41–42）+ EN/Qabf 与 SSIM/Nabf 的锐化-平滑 Pareto 互斥。经 ~20 组实验（加宽/加深/IR-VIS 专精 ssim/grad/int/detail 各档）确认。
 - **技术产出（均保留）**：`train_moe.py`（+depth/--init-from/--only-task/--ms-grad）、`net_moe.py`（blenddetail 边缘门控 detail 头、per_task_head、deepseek 路由）、`train_moe_staged.py`（分阶段+per-task 头）、`train_moe_curri.py`（相对-loss 课程）。
 - **下一步（若要 irvis→5）**：需匹配 CDDFuse/SwinFusion 的分解-重建强骨干（INN 高频分支 + 相关性分解损失 + 两阶段），把 SD 从 41.0 推过 41.4，这是架构级工程。v1/v3 模型均冻结保留。
+
+## 4. 附：CDDFuse 式 INN 分解分支尝试 —— 未突破，按约定回退 v3
+按用户批准，实现了**可逆(affine-coupling) 高频细节分支 INN**（`net_moe.py: AffineCoupling/INNDetail`，`fusion_head="inn"`）：F = 决策图 blend + 边缘门控·INN高频细节，意在把 irvis 的 SD 从 ~41.0 推过 #3 的 41.4。3 组（细节强度 res0.3–0.5 + max-梯度监督）结果：
+| 配置 | irvis Top-3 (SD) | medical | gfp |
+|---|---|---|---|
+| INN_r3g1 | **4** (SD 40.1) | 5 | 5 |
+| INN_r5g15(强细节) | 4 (SD 39.8) | 4↓ | 5 |
+| INN_r4int | 3 (SD 39.0) | 3↓ | 4 |
+| **v3 (oc96-d4, 现方案)** | **4** (SD 39.9) | 5 | 5 |
+
+**结论：INN 分支未把 irvis 顶过 4**（SD 仍 ~40 < 41.4；强细节还会拖累 medical）。在 170 裁块 + 边缘门控下，可逆细节分支带来的对比度增益不足以翻越 4 个专精方法密集的 SD 墙。**按用户约定（"还是只有 4 个 top3 就回退"），最终方案回退并锁定为 v3（oc96-depth4）：irvis Top-3=4 / medical=5 / gfp=5，Top-5=7/6/5。** INN 代码保留为可选消融（`fusion_head="inn"`），不启用。
