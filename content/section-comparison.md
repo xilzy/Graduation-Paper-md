@@ -94,13 +94,13 @@
 
 ## 4.2.3　定性（主观）分析
 
-> 图目占位，待从 `fusion_bench/fused[_final]/` 导出各方法融合结果拼图。
+三个模态的定性对比结果如图 4-1、图 4-2、图 4-3 所示，每张图从左到右依次为两路源图像与 10 个方法（9 个对比方法 + Ours）的融合结果，并在同一关键区域画红框、在角落给出局部放大子图，便于细节比较。图片素材见仓库 `Materials/comparison/<task>/`（成品拼图 `fig_<task>_qualitative.png` 与可自排的单图 `individual/`），由 `script/make_qualitative_figure.py` 生成，可换样本/调红框重跑。
 
-**【图 4-x】红外–可见光融合结果对比**（含热目标区域局部放大）：对比各方法在低光/含热目标场景下的融合结果。`TODO: 拼图`
+**【图 4-1】红外–可见光融合结果对比**（样本 00004N，夜景行人热目标，含局部放大）：`Materials/comparison/irvis/fig_irvis_qualitative.png`。
 
-**【图 4-y】医学融合结果对比**（PET/SPECT–MRI 彩色）：对比功能代谢信息与结构信息的融合效果。`TODO: 拼图`
+**【图 4-2】医学融合结果对比**（样本 pet_25027，PET/SPECT–MRI 彩色，含局部放大）：`Materials/comparison/medical/fig_medical_qualitative.png`。
 
-**【图 4-z】显微融合结果对比**（GFP–PC，含荧光点局部放大与直方图）：对比荧光功能信号与相位衬度结构的融合效果。`TODO: 拼图`
+**【图 4-3】显微融合结果对比**（样本 05-A06，GFP–PC，含荧光/结构局部放大）：`Materials/comparison/gfp_pc/fig_gfp_pc_qualitative.png`。
 
 **主观分析（写作要点，与定量结果一致）。**
 
