@@ -23,13 +23,14 @@ Materials/
 
 ## 本批对比图说明（comparison/）
 
-- 风格对标参考论文：**2×6** 排布，每个面板在**同一关键区域画红框**，并在**左下角**贴红边**小尺寸局部放大子图**；面板下方编号标注 `(a) Visible … (l) Ours`，Ours 红色高亮；无顶部标题。
+- 风格对标参考论文：**2×6** 排布，每个面板在**同一关键区域画红框**，并在**左下角**贴红边**小尺寸局部放大子图**；面板下方编号标注 `(a) Visible … (l) Ours`（Ours 与其它方法**同样式**，不特殊标色）；无顶部标题。
 - 面板顺序：`(a)源A | (b)源B | (c)LP | (d)NSCT | (e)TarDAL | (f)DATFuse | (g)LRRNet | (h)DDFM | (i)MURF | (j)EMMA | (k)GIFNet | (l)Ours`。
-- 数据来源（与评测协议一致）：irvis 取 `fusion_bench/fused/`（灰度）；medical/gfp_pc 取 `fusion_bench/fused_final/`（RGB 彩色重组）。**Ours(v3) = 文件夹 `W96L`**。
+- 显示为**彩色**（社区标准 fuse-Y/recombine-CbCr）：**IR-VIS 用可见光色度重组为彩色**（脚本内 `recolor_irvis`，融合 Y 取自 `fused/`）；medical/gfp_pc 取 `fusion_bench/fused_final/`（已重组）。注：IR-VIS 的**指标**仍按协议在灰度 Y 上计算（见 `EVALUATION-metrics.md`），彩色仅用于**显示**。**Ours(v3) = 文件夹 `W96L`**。
 - 医学**按模态分开画**：PET–MRI 与 SPECT–MRI 各一张图。
-- 样本选取原则：优先挑**本文 5 项指标（MI/SSIM/Qabf/VIF/Nabf）在该图上均优于全部对比方法**的代表图。当前：
-  - irvis=`01506D`（5/5 全胜）、SPECT–MRI=`spect_18017`（5/5）、gfp_pc=`05-A02`（5/5）；
-  - PET–MRI=`pet_25027`：PET 子集无 5/5 全胜图（每张都在 Nabf 上略输给某个过度平滑方法），此图为 4/5（MI/SSIM/Qabf/VIF 全胜，Nabf 0.011 已近最低），为该子集最优代表。
+- 样本选取：优先挑本文 5 项指标（MI/SSIM/Qabf/VIF/Nabf）均优于全部对比方法的代表图。当前：
+  - SPECT–MRI=`spect_18017`（5/5 全胜）、gfp_pc=`05-A02`（5/5）；
+  - PET–MRI=`pet_25027`：PET 子集无 5/5 全胜图（每张都在 Nabf 上略输给某个过度平滑方法），此图为 4/5（MI/SSIM/Qabf/VIF 全胜，Nabf 0.011 近最低），为该子集最优代表；
+  - IR-VIS=`00778N`：为兼顾视觉效果（彩色下可见光信息保留更直观）所选，本文在 MI/VIF/Nabf 上更优，SSIM/Qabf 与最优方法极接近（差 <0.01）。
 
 ## 如何重新生成 / 换样本 / 调红框
 
@@ -39,7 +40,7 @@ Materials/
 PY=/ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python
 cd script
 # --box 关键区域相对坐标 x y w h（宜小）；--corner 放大子图所在角（默认 bl 左下）；--ncols 每行面板数（默认 6）
-$PY make_qualitative_figure.py --task irvis   --sample 01506D      --box 0.40 0.45 0.16 0.16
+$PY make_qualitative_figure.py --task irvis   --sample 00778N      --box 0.40 0.45 0.16 0.16   # IR-VIS 自动按可见光色度重组为彩色
 $PY make_qualitative_figure.py --task medical --subtag pet   --sample pet_25027   --box 0.38 0.40 0.18 0.18
 $PY make_qualitative_figure.py --task medical --subtag spect --sample spect_18017 --box 0.38 0.40 0.18 0.18
 $PY make_qualitative_figure.py --task gfp_pc  --sample 05-A02      --box 0.40 0.45 0.16 0.16

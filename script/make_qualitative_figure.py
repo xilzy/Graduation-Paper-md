@@ -76,6 +76,13 @@ def annotate(img, box, zoom, border, corner):
     return img
 
 
+def recolor_irvis(fused_gray, visible_rgb):
+    """Standard IR-VIS color output: fused Y + visible's Cb,Cr -> RGB (BT.601)."""
+    y = fused_gray.convert("L")
+    _, cb, cr = visible_rgb.convert("YCbCr").split()
+    return Image.merge("YCbCr", (y, cb, cr)).convert("RGB")
+
+
 def sanitize(s):
     return s.replace("/", "-").replace(" ", "_")
 
@@ -123,7 +130,12 @@ def main():
         if not os.path.exists(p):
             print(f"[warn] missing {disp}: {p}")
             continue
-        panels.append((disp, load_rgb(p, ref)))
+        if task == "irvis":
+            # standard color IR-VIS display: fused Y recombined with visible Cb,Cr
+            fg = Image.open(p).convert("L").resize(ref, Image.BILINEAR)
+            panels.append((disp, recolor_irvis(fg, srcA)))
+        else:
+            panels.append((disp, load_rgb(p, ref)))
 
     annotated = []
     for label, img in panels:
@@ -143,11 +155,8 @@ def main():
             continue
         label, ann = annotated[i]
         ax.imshow(np.asarray(ann))
-        is_ours = (label == "Ours")
         ax.text(0.5, -0.05, f"({letters[i]}) {label}", transform=ax.transAxes,
-                ha="center", va="top", fontsize=11,
-                fontweight="bold" if is_ours else "normal",
-                color="red" if is_ours else "black")
+                ha="center", va="top", fontsize=11, color="black")
     fig.tight_layout(h_pad=1.6, w_pad=0.6)
     suffix = f"_{sub}" if sub else ""
     out_png = os.path.join(out_base, f"fig_{task}{suffix}_qualitative.png")
