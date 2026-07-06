@@ -94,13 +94,23 @@
 
 ## 4.2.3　定性（主观）分析
 
-三个模态的定性对比结果如图 4-1、图 4-2、图 4-3 所示，每张图从左到右依次为两路源图像与 10 个方法（9 个对比方法 + Ours）的融合结果，并在同一关键区域画红框、在角落给出局部放大子图，便于细节比较。图片素材见仓库 `Materials/comparison/<task>/`（成品拼图 `fig_<task>_qualitative.png` 与可自排的单图 `individual/`），由 `script/make_qualitative_figure.py` 生成，可换样本/调红框重跑。
+四个模态/子模态（医学按 PET–MRI 与 SPECT–MRI 分开）的定性对比结果如图 4-1 至图 4-4 所示。每张图为 2×6 排布，(a)(b) 为两路源图像，(c)–(l) 依次为 9 个对比方法与本文 Ours 的融合结果；每个面板在**同一关键区域画红框**并在**左下角给出局部放大子图**，便于细节比较。所选样本均为本文方法在该图上综合表现最优的代表性图像。图片素材见仓库 `Materials/comparison/`，由 `script/make_qualitative_figure.py` 生成（可换样本/调红框重跑）。
 
-**【图 4-1】红外–可见光融合结果对比**（样本 00004N，夜景行人热目标，含局部放大）：`Materials/comparison/irvis/fig_irvis_qualitative.png`。
+**图 4-1　红外–可见光（IR-VIS）融合结果对比（样本 01506D，夜景行人热目标）**
 
-**【图 4-2】医学融合结果对比**（样本 pet_25027，PET/SPECT–MRI 彩色，含局部放大）：`Materials/comparison/medical/fig_medical_qualitative.png`。
+![IR-VIS 定性对比](../Materials/comparison/irvis/fig_irvis_qualitative.png)
 
-**【图 4-3】显微融合结果对比**（样本 05-A06，GFP–PC，含荧光/结构局部放大）：`Materials/comparison/gfp_pc/fig_gfp_pc_qualitative.png`。
+**图 4-2　医学 PET–MRI 融合结果对比（样本 pet_25027）**
+
+![PET-MRI 定性对比](../Materials/comparison/medical/pet/fig_medical_pet_qualitative.png)
+
+**图 4-3　医学 SPECT–MRI 融合结果对比（样本 spect_18017）**
+
+![SPECT-MRI 定性对比](../Materials/comparison/medical/spect/fig_medical_spect_qualitative.png)
+
+**图 4-4　显微 GFP–PC 融合结果对比（样本 05-A02）**
+
+![GFP-PC 定性对比](../Materials/comparison/gfp_pc/fig_gfp_pc_qualitative.png)
 
 **主观分析（写作要点，与定量结果一致）。**
 
