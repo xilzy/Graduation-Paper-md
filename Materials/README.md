@@ -15,7 +15,10 @@ Materials/
 │   │   ├── pet/    (individual/ + fig_medical_pet_qualitative.png)   # PET–MRI
 │   │   └── spect/  (individual/ + fig_medical_spect_qualitative.png) # SPECT–MRI
 │   └── gfp_pc/  (individual/ + fig_gfp_pc_qualitative.png)
-├── ablation/            预留：消融实验图（待产出）
+├── ablation/            §4.3 创新点消融定性图（本批已产出）
+│   ├── irvis/   (individual/ + fig_irvis_ablation.png)
+│   ├── medical/ (individual/ + fig_medical_ablation.png)   # SPECT–MRI 样本
+│   └── gfp_pc/  (individual/ + fig_gfp_pc_ablation.png)
 └── hyperparam/          预留：超参实验图（待产出）
 ```
 
@@ -47,3 +50,15 @@ $PY make_qualitative_figure.py --task gfp_pc  --sample 05-A02      --box 0.40 0.
 ```
 
 换样本：`--sample <stem>`（候选见 `fusion_bench/inputs/<task>/A/`）。选「本文全指标最优」的样本可参考 `select_samples.py` 的逻辑（逐图比对 W96L vs 9 方法）。
+
+## 消融定性图（ablation/）
+
+由 `script/make_ablation_figure.py` 生成，2×4 排布：`(a)源A | (b)源B | (c)Full(v3) | (d)−MoE | (e)−Decision head | (f)−Window attn | (g)−maxfuse | (h)−Task cond`。**仅创新点消融**（超参不在此）。变体文件夹映射：Full=`W96L`、−MoE=`abNoMoE`、−Decision head=`abDirect`、−Window attn=`abWs1`、−maxfuse=`abOrig`、−Task cond=`abNoTC`。
+
+```bash
+PY=/ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python
+cd script
+$PY make_ablation_figure.py --task irvis   --sample 00778N      --box 0.40 0.45 0.16 0.16
+$PY make_ablation_figure.py --task gfp_pc  --sample 05-A02      --box 0.40 0.45 0.16 0.16
+$PY make_ablation_figure.py --task medical --sample spect_18017 --box 0.38 0.40 0.18 0.18
+```
