@@ -72,3 +72,27 @@
 - `Materials/ablation/`：重生成 4 张图——`irvis/fig_irvis_ablation.png`(01506D)、`medical/pet/fig_medical_pet_ablation.png`(pet_25015，新增)、`medical/spect/fig_medical_spect_ablation.png`(spect_4010)、`gfp_pc/fig_gfp_pc_ablation.png`(05-B06)；删除旧的 `medical/fig_medical_ablation.png` 及被替换样本的 individual 面板。
 - `content/section-ablation.md`：§4.3.2 改为 4 图（新增 PET–MRI）、样本改为去重后的新样本、图号 4-5~4-8；表 4-9 下新增「消融范围说明」直接解释 fused_final 里多出来的变体各是什么、为什么不进主表。
 - `Materials/README.md`：ablation 目录树补 pet/spect 子目录，重生成命令改为新样本 + `--subtag`，并注明样本与 §4.2 去重、双消融/超参见 EXP-ABLATION-PARAM-v3。
+
+---
+
+## 5. 为什么 5 个单消融只组合出 3 组双消融（设计考量）
+
+5 个创新点两两组合共 C(5,2)=10 种。**双消融不是要穷举交互网格，只是要证明一件事：去掉两个比去掉一个掉得更多（超可加退化）→ 创新点互补、彼此不可替代。** 这个结论用少数几组有代表性的组合就够了，跑满 10 组（每组都是三模态 20-epoch 重训）性价比很低。据此只挑了 3 组，规则如下：
+
+| 组合 | 跑？ | 文件夹 | 参数叠加 | 选它的理由 |
+|---|---|---|---|---|
+| I1+I2（−MoE −决策图头） | ✅ | `abNoMoE_direct` | `--n-routed 0 --fusion-head direct` | 容量(MoE) × 融合机制(决策图头) 是否各自独立起效 |
+| I2+I4（−决策图头 −maxfuse） | ✅ | `abDirect_orig` | `--fusion-head direct --loss-mode orig` | **两大主导机制**互测：证明它俩不是做同一件事 |
+| I3+I4（−窗口 −maxfuse） | ✅ | `abWs1_orig` | `--window-size 1 --loss-mode orig` | 空间上下文(窗口) × 细节对齐(maxfuse) |
+| I1+I5（−MoE −任务条件） | ❌ | — | — | **逻辑冗余**：`--n-routed 0` 已让路由失效，任务条件路由无从存在，等于 ≈ 单独 −MoE |
+| I1+I3 / I1+I4 / I2+I3 / I2+I5 / I3+I5 / I4+I5 | ❌ | — | — | 边际信息低，不改变「互补非冗余」结论，省算力 |
+
+设计上的三条取舍原则：
+
+1. **围绕两个"主导机制"展开。** 单消融保持度排序里 I2 决策图头（14→4）、I4 maxfuse（14→9）掉得最狠，是承重构件。3 组双消融正是以它俩为中心：`--fusion-head direct`(I2) 与 `--loss-mode orig`(I4) 各出现在 2 组里；`I2+I4` 还把两者直接对撞，验证「最强的两个也不重叠」。
+2. **每个"独立结构件"覆盖一次即可。** I1(MoE 容量) 与 I3(窗口注意力) 各与一个主导机制配一次（I1+I2、I3+I4），足以看清它们与主导机制的叠加效应；再多配对只是重复同一类证据。
+3. **排除不独立/低价值的组合。** I5(任务条件路由) 是 MoE 路由的**子机制**（代码里 `task_cond` 只作用于路由器，`--n-routed 0` 时路由器不存在），所以任何含 I5 的双消融要么冗余(I1+I5)、要么价值低(I5 单删本就最温和、只是 MoE 内部精修)，一律不做。
+
+**构造方式印证了这套逻辑**：3 组双消融的命名就是「已有单消融 + 再叠一个主导删除」——`abNoMoE`→`abNoMoE_direct`、`abDirect`→`abDirect_orig`、`abWs1`→`abWs1_orig`（7-04 那一波在 7-02 单消融基础上追加 `direct`/`orig`），是一次**定向补充**而非组合扫描。
+
+> 一句话：双消融的目的是"证明互补非冗余"，不是"画满交互矩阵"；因此只需围绕两个主导机制(I2/I4)、每个独立创新点覆盖一次、剔除含 I5 的冗余组合，3 组就足以支撑结论，10 组是浪费。若答辩需要更完整，可再补 I1+I4、I2+I3 等，但预期只会进一步强化同一结论。
