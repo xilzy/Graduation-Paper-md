@@ -14,6 +14,8 @@
 | I4 | **maxfuse 任务自适应损失** | 朝逐像素 max 对齐，保强结构/对比 | 改回 GFP 标定的对称损失（−maxfuse） |
 | I5 | **任务条件路由** | 路由注入任务嵌入，按任务特化专家 | 路由不注入任务嵌入（−Task cond） |
 
+> **消融范围说明。** 本节主表只做**单创新点**消融（每次移除一个），以清晰隔离各创新点的独立贡献。此外还补做了 3 组**双创新点联合消融**（−MoE−决策图头、−决策图头−maxfuse、−窗口−maxfuse），用于验证创新点之间互补、非冗余（去掉两个比去掉一个掉得更多）；这部分与「路由方式 softmax/deepseek、骨干深度」等**架构/超参取值对比**同属交互与超参分析，收录于内部记录 `EXP-ABLATION-PARAM-v3.md` 及 §4.4，不并入本节主表。因此 `fusion_bench/fused_final/` 下除本表 5 个变体（`abNoMoE / abDirect / abWs1 / abOrig / abNoTC`）外，还会看到 `abNoMoE_direct / abDirect_orig / abWs1_orig`（双消融）以及 `abD3 / abDeep`（depth=3、deepseek 路由的超参对比点）等文件夹，均非本节主表内容。
+
 ## 4.3.1　客观分析
 
 三个模态上完整模型与各消融变体的 5 项指标结果如表 4-10 至表 4-12 所示（↑ 越大越好，Nabf ↓ 越小越好）。
@@ -67,23 +69,27 @@
 
 ## 4.3.2　主观分析
 
-三个模态上完整模型与各消融变体的定性对比如图 4-5 至图 4-7 所示（2×4 排布，每个面板红框 + 左下角局部放大；彩色显示同 §4.2）。
+四个模态/子模态（医学按 PET–MRI 与 SPECT–MRI 分开，与 §4.2 保持一致）上完整模型与各消融变体的定性对比如图 4-5 至图 4-8 所示（2×4 排布，每个面板红框 + 左下角局部放大；彩色显示同 §4.2）。为避免与 §4.2 对比实验重复，本节各图**另选与 §4.2 不同的样本**（均取本文全指标最优/近最优的代表图）。
 
-**图 4-5　IR-VIS 创新点消融定性对比（样本 00778N）**
+**图 4-5　IR-VIS 创新点消融定性对比（样本 01506D）**
 
 ![IR-VIS 消融定性对比](../Materials/ablation/irvis/fig_irvis_ablation.png)
 
-**图 4-6　医学 SPECT–MRI 创新点消融定性对比（样本 spect_18017）**
+**图 4-6　医学 PET–MRI 创新点消融定性对比（样本 pet_25015）**
 
-![医学消融定性对比](../Materials/ablation/medical/fig_medical_ablation.png)
+![医学 PET–MRI 消融定性对比](../Materials/ablation/medical/pet/fig_medical_pet_ablation.png)
 
-**图 4-7　显微 GFP–PC 创新点消融定性对比（样本 05-A02）**
+**图 4-7　医学 SPECT–MRI 创新点消融定性对比（样本 spect_4010）**
+
+![医学 SPECT–MRI 消融定性对比](../Materials/ablation/medical/spect/fig_medical_spect_ablation.png)
+
+**图 4-8　显微 GFP–PC 创新点消融定性对比（样本 05-B06）**
 
 ![GFP–PC 消融定性对比](../Materials/ablation/gfp_pc/fig_gfp_pc_ablation.png)
 
 **主观分析（与客观结果一致）。**
 
-- **完整 v3（c）**：功能信息（红外热目标 / SPECT 代谢色 / GFP 荧光）与结构细节保留均衡、对比度适中、边缘干净。
+- **完整 v3（c）**：功能信息（红外热目标 / PET·SPECT 代谢色 / GFP 荧光）与结构细节保留均衡、对比度适中、边缘干净。
 - **−Decision head（e）**：整体对比度下降、发暗，功能信息被弱化（荧光/伪彩变淡），结构源过度主导，与 MI/SSIM 的塌陷一致。
 - **−maxfuse（g）**：最明显的退化——呈颗粒噪声与过饱和的弥散色块，医学图中 MRI 结构细节被色块淹没、GFP 图荧光变噪，与其 MI/Qabf 的大幅下降对应。
 - **−Window attn（f）**：IR-VIS 场景出现斑块与伪影（Nabf 升高），细节不如完整模型干净。

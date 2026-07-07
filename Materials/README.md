@@ -17,7 +17,9 @@ Materials/
 │   └── gfp_pc/  (individual/ + fig_gfp_pc_qualitative.png)
 ├── ablation/            §4.3 创新点消融定性图（本批已产出）
 │   ├── irvis/   (individual/ + fig_irvis_ablation.png)
-│   ├── medical/ (individual/ + fig_medical_ablation.png)   # SPECT–MRI 样本
+│   ├── medical/                # 按模态分开（与 §4.2 一致）
+│   │   ├── pet/   (individual/ + fig_medical_pet_ablation.png)   # PET–MRI 样本
+│   │   └── spect/ (individual/ + fig_medical_spect_ablation.png) # SPECT–MRI 样本
 │   └── gfp_pc/  (individual/ + fig_gfp_pc_ablation.png)
 └── hyperparam/          预留：超参实验图（待产出）
 ```
@@ -58,7 +60,10 @@ $PY make_qualitative_figure.py --task gfp_pc  --sample 05-A02      --box 0.40 0.
 ```bash
 PY=/ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python
 cd script
-$PY make_ablation_figure.py --task irvis   --sample 00778N      --box 0.40 0.45 0.16 0.16
-$PY make_ablation_figure.py --task gfp_pc  --sample 05-A02      --box 0.40 0.45 0.16 0.16
-$PY make_ablation_figure.py --task medical --sample spect_18017 --box 0.38 0.40 0.18 0.18
+# 样本与 §4.2 对比实验刻意不同（去重）；医学分 PET/SPECT 两图，与 §4.2 一致。
+# 只做单创新点消融；双消融(abNoMoE_direct/abDirect_orig/abWs1_orig)与超参(abD3/abDeep 等)见 EXP-ABLATION-PARAM-v3.md。
+$PY make_ablation_figure.py --task irvis   --sample 01506D     --box 0.40 0.45 0.16 0.16
+$PY make_ablation_figure.py --task gfp_pc  --sample 05-B06     --box 0.40 0.45 0.16 0.16
+$PY make_ablation_figure.py --task medical --subtag pet   --sample pet_25015  --box 0.38 0.40 0.18 0.18
+$PY make_ablation_figure.py --task medical --subtag spect --sample spect_4010 --box 0.38 0.40 0.18 0.18
 ```

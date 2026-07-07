@@ -5,11 +5,15 @@ Columns: source A, source B, Full(v3), -MoE, -DecisionHead, -WindowAttn, -maxfus
 -TaskCond  (2x4 grid). Same red-box + bottom-left zoom-inset style, (a)-(h) captions.
 IR-VIS shown in color (visible-chroma recombination); medical/gfp_pc from fused_final.
 Only INNOVATION-point ablations here (NOT hyperparameter sweeps).
+Medical is split by modality via --subtag pet|spect (sets srcA label + output
+subfolder+name), matching make_qualitative_figure.py; samples are chosen DIFFERENT
+from the §4.2 comparison figures to avoid reusing the same images.
 
 Usage:
-  python make_ablation_figure.py --task irvis  --sample 00778N     --box 0.40 0.45 0.16 0.16
-  python make_ablation_figure.py --task gfp_pc --sample 05-A02     --box 0.40 0.45 0.16 0.16
-  python make_ablation_figure.py --task medical --sample spect_18017 --box 0.38 0.40 0.18 0.18
+  python make_ablation_figure.py --task irvis  --sample 01506D     --box 0.40 0.45 0.16 0.16
+  python make_ablation_figure.py --task gfp_pc --sample 05-B06     --box 0.40 0.45 0.16 0.16
+  python make_ablation_figure.py --task medical --subtag spect --sample spect_4010 --box 0.38 0.40 0.18 0.18
+  python make_ablation_figure.py --task medical --subtag pet   --sample pet_25015  --box 0.38 0.40 0.18 0.18
 """
 import os, string, argparse
 import numpy as np
@@ -72,6 +76,7 @@ def sanitize(s):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True, choices=["irvis", "medical", "gfp_pc"])
+    ap.add_argument("--subtag", default="", help="medical: pet|spect (subfolder + srcA label)")
     ap.add_argument("--sample", required=True)
     ap.add_argument("--box", nargs=4, type=float, default=[0.40, 0.45, 0.16, 0.16])
     ap.add_argument("--zoom", type=float, default=2.2)
@@ -82,13 +87,15 @@ def main():
     args = ap.parse_args()
 
     stem = args.sample[:-4] if args.sample.endswith(".png") else args.sample
-    fn = stem + ".png"; task = args.task
-    out_base = os.path.join(REPO, "Materials", "ablation", task)
+    fn = stem + ".png"; task = args.task; sub = args.subtag
+    out_base = os.path.join(REPO, "Materials", "ablation", task, sub) if sub \
+        else os.path.join(REPO, "Materials", "ablation", task)
     ind_dir = os.path.join(out_base, "individual"); os.makedirs(ind_dir, exist_ok=True)
 
     la, lb = SRC_LABELS[task]
     if task == "medical":
-        la = "SPECT" if stem.startswith("spect") else "PET"
+        la = sub.upper() if sub in ("pet", "spect") else \
+            ("SPECT" if stem.startswith("spect") else "PET")
     a_path = os.path.join(BENCH, "inputs", task, "colorA", fn)
     if not os.path.exists(a_path):
         a_path = os.path.join(BENCH, "inputs", task, "A", fn)
@@ -125,9 +132,10 @@ def main():
         ax.text(0.5, -0.05, f"({letters[i]}) {label}", transform=ax.transAxes,
                 ha="center", va="top", fontsize=11, color="black")
     fig.tight_layout(h_pad=1.6, w_pad=0.6)
-    out_png = os.path.join(out_base, f"fig_{task}_ablation.png")
+    suffix = f"_{sub}" if sub else ""
+    out_png = os.path.join(out_base, f"fig_{task}{suffix}_ablation.png")
     fig.savefig(out_png, dpi=args.dpi, bbox_inches="tight"); plt.close(fig)
-    print(f"[{task}] {n} panels {nrows}x{ncols} -> {out_png}")
+    print(f"[{task}{('/'+sub) if sub else ''}] {n} panels {nrows}x{ncols} -> {out_png}")
 
 
 if __name__ == "__main__":
