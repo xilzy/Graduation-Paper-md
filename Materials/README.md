@@ -21,7 +21,8 @@ Materials/
 │   │   ├── pet/   (individual/ + fig_medical_pet_ablation.png)   # PET–MRI 样本
 │   │   └── spect/ (individual/ + fig_medical_spect_ablation.png) # SPECT–MRI 样本
 │   └── gfp_pc/  (individual/ + fig_gfp_pc_ablation.png)
-└── hyperparam/          预留：超参实验图（待产出）
+└── hyperparam/          §4.4 超参数取值扫描定性图（本批已产出）
+    └── <param>/  (individual/ + fig_<param>_<task>[_<subtag>].png)  # 每超参 1 张，代表模态
 ```
 
 命名约定（后续各章沿用）：`<类别>/<子项>/{individual/, fig_<子项>_*.png}`。类别用途固定为 `comparison`（对比）、`ablation`（消融）、`hyperparam`（超参）。
@@ -66,4 +67,19 @@ $PY make_ablation_figure.py --task irvis   --sample 01506D     --box 0.40 0.45 0
 $PY make_ablation_figure.py --task gfp_pc  --sample 05-B06     --box 0.40 0.45 0.16 0.16
 $PY make_ablation_figure.py --task medical --subtag pet   --sample pet_25015  --box 0.38 0.40 0.18 0.18
 $PY make_ablation_figure.py --task medical --subtag spect --sample spect_4010 --box 0.38 0.40 0.18 0.18
+```
+
+## 超参定性图（hyperparam/）
+
+由 `script/make_hyperparam_figure.py` 生成，每个超参 1 张（选该参数效果最直观的代表模态）：source A | source B | 各扫描取值（v3 值标注 (v3)）。变体文件夹映射见脚本内 `PARAMS`（Full v3=`W96L`，其余 `hp*`/`abD3`/`abDeep`）。代表模态与样本：irvis 用 `00147D`，medical-spect 用 `spect_15009`（均与 §4.2/§4.3 去重）。
+
+```bash
+PY=/ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python
+cd script
+for p in topk n_shared depth out_channel aux_weight routing; do
+  $PY make_hyperparam_figure.py --param $p --task irvis --sample 00147D --box 0.40 0.45 0.16 0.16
+done
+for p in n_routed window_size; do
+  $PY make_hyperparam_figure.py --param $p --task medical --subtag spect --sample spect_15009 --box 0.38 0.40 0.18 0.18
+done
 ```
