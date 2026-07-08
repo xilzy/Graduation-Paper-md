@@ -9,6 +9,7 @@
 | `chapter-experiments.md` | 第4章 实验与分析 | 框架稿（结构 + 已就绪核心数据表 + 图目占位 + 写作要点）|
 | `section-comparison.md` | §4.2 与主流方法的对比实验 | 定稿（9 方法含 EMMA'24/GIFNet'25 + 5 指标，Ours 三模态全指标第一）|
 | `section-ablation.md` | §4.3 消融实验（仅创新点） | 定稿（5 创新点逐一消融 + 主客观分析；超参不在此）|
+| `section-hyperparam.md` | §4.4 超参数分析 | 定稿（8 超参逐一取值扫描 + 优势指标保持度判优；数据源 EXP-ABLATION-PARAM-v3）|
 
 > 后续章节（绪论 / 相关工作 / 方法 / 结论 等）的 Markdown 文本内容陆续加入本目录。
 
