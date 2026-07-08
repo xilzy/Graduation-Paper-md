@@ -71,15 +71,21 @@ $PY make_ablation_figure.py --task medical --subtag spect --sample spect_4010 --
 
 ## 超参定性图（hyperparam/）
 
-由 `script/make_hyperparam_figure.py` 生成，每个超参 1 张（选该参数效果最直观的代表模态）：source A | source B | 各扫描取值（v3 值标注 (v3)）。变体文件夹映射见脚本内 `PARAMS`（Full v3=`W96L`，其余 `hp*`/`abD3`/`abDeep`）。代表模态与样本：irvis 用 `00147D`，medical-spect 用 `spect_15009`（均与 §4.2/§4.3 去重）。
+由 `script/make_hyperparam_figure.py` 生成，每个超参 1 张（选该参数效果最直观的代表模态）：source A | source B | 各扫描取值（v3 值标注 (v3)）。变体文件夹映射见脚本内 `PARAMS`（Full v3=`W96L`，其余 `hp*`/`abD3`/`abDeep`）。**8 个参数各用一张互不相同、且与 §4.2/§4.3 均不重复的样本**：崩点在 medical 的用医学图、崩点在 IR-VIS 的用红外-可见光图。
 
 ```bash
 PY=/ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python
 cd script
-for p in topk n_shared depth out_channel aux_weight routing; do
-  $PY make_hyperparam_figure.py --param $p --task irvis --sample 00147D --box 0.40 0.45 0.16 0.16
-done
-for p in n_routed window_size; do
-  $PY make_hyperparam_figure.py --param $p --task medical --subtag spect --sample spect_15009 --box 0.38 0.40 0.18 0.18
-done
+# IR-VIS 类（各用不同样本）
+$PY make_hyperparam_figure.py --param topk        --task irvis --sample 00032N --box 0.40 0.45 0.16 0.16
+$PY make_hyperparam_figure.py --param depth       --task irvis --sample 00091D --box 0.40 0.45 0.16 0.16
+$PY make_hyperparam_figure.py --param out_channel --task irvis --sample 00119D --box 0.40 0.45 0.16 0.16
+$PY make_hyperparam_figure.py --param aux_weight  --task irvis --sample 00186D --box 0.40 0.45 0.16 0.16
+$PY make_hyperparam_figure.py --param routing     --task irvis --sample 00218D --box 0.40 0.45 0.16 0.16
+# 医学类（n_routed/window_size 崩点在 medical → SPECT；n_shared 用 PET）
+$PY make_hyperparam_figure.py --param n_routed    --task medical --subtag spect --sample spect_11013 --box 0.38 0.40 0.18 0.18
+$PY make_hyperparam_figure.py --param window_size --task medical --subtag spect --sample spect_15012 --box 0.38 0.40 0.18 0.18
+$PY make_hyperparam_figure.py --param n_shared    --task medical --subtag pet   --sample pet_25022   --box 0.38 0.40 0.18 0.18
 ```
+
+样本去重一览：IR-VIS 用 00032N/00091D/00119D/00186D/00218D，medical-spect 用 spect_11013/spect_15012，medical-pet 用 pet_25022；均不与 §4.2（00778N/pet_25027/spect_18017/05-A02）、§4.3（01506D/pet_25015/spect_4010/05-B06）重复。
