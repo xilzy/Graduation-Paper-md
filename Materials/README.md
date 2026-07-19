@@ -21,11 +21,23 @@ Materials/
 │   │   ├── pet/   (individual/ + fig_medical_pet_ablation.png)   # PET–MRI 样本
 │   │   └── spect/ (individual/ + fig_medical_spect_ablation.png) # SPECT–MRI 样本
 │   └── gfp_pc/  (individual/ + fig_gfp_pc_ablation.png)
-└── hyperparam/          §4.4 超参数取值扫描定性图（本批已产出）
-    └── <param>/  (individual/ + fig_<param>_<task>[_<subtag>].png)  # 每超参 1 张，代表模态
+├── hyperparam/          §4.4 超参数取值扫描定性图（本批已产出）
+│   └── <param>/  (individual/ + fig_<param>_<task>[_<subtag>].png)  # 每超参 1 张，代表模态
+└── efficiency/          §4.5 训练效率与分布式优化
+    ├── data/            # 单卡、容量质量、NCCL、DDP 原始 JSON
+    └── figures/         # 原理图与数据证据图（SVG + PNG）
 ```
 
 命名约定（后续各章沿用）：`<类别>/<子项>/{individual/, fig_<子项>_*.png}`。类别用途固定为 `comparison`（对比）、`ablation`（消融）、`hyperparam`（超参）。
+
+## 训练效率图（efficiency/）
+
+由 `script/make_efficiency_figures.py` 从 `efficiency/data/*.json` 生成。原理图包括 compile 融合、SDPA、分组容量 MoE、容量—负载均衡、DDP 分桶重叠与 rank 成本均衡；证据图包括 grouped×compile 交互、专家数扩展、容量 Pareto、NCCL 桶曲线、DDP 桶扫描及 1/2/4/8 卡扩展/straggler。对应实验解释见 `EXP-INFRA-03-grouped-moe-ddp-evidence.md`。
+
+```bash
+cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
+/opt/conda/envs/py310/bin/python3 script/make_efficiency_figures.py
+```
 
 ## 本批对比图说明（comparison/）
 

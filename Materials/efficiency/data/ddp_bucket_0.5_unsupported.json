@@ -1,0 +1,11 @@
+{
+  "schema": "experiment-failure-v1",
+  "experiment": "ddp_bucket_sweep",
+  "config": {
+    "world_size": 4,
+    "bucket_cap_mb": 0.5,
+    "compile": true
+  },
+  "status": "UNSUPPORTED",
+  "evidence": "PyTorch 2.9 DDPOptimizer assertion: first bucket (1 MiB default) must be <= bucket_cap_mb"
+}

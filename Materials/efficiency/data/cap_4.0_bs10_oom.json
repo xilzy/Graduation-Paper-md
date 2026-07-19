@@ -1,0 +1,13 @@
+{
+  "schema": "experiment-failure-v1",
+  "experiment": "single_gpu_capacity",
+  "config": {
+    "batch_size": 10,
+    "cap_factor": 4.0,
+    "combine": "grouped",
+    "attn": "sdpa",
+    "compile": true
+  },
+  "status": "OOM",
+  "evidence": "torch.OutOfMemoryError during warmup; process held 79.01 GiB and the next 424 MiB allocation failed on H800 79.11 GiB usable memory"
+}

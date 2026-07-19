@@ -1,78 +1,219 @@
 # 4.5　训练效率与分布式优化
 
-本文方法虽是仅约 4.11 M 参数的轻量模型，但其核心的稀疏 MoE-FFN 在训练时会产生大量**小算子**以及**稀疏路由的索引/拷贝**开销，使单步耗时并不由浮点算力主导。本节以"**profile 先行**"为原则系统优化训练效率：先定位真正的瓶颈，再逐项做优化并实测"为什么做 + 效果如何"，最后给出分布式扩展结果；其间也如实记录若干**与"大模型直觉"相反的负结果**。本节数据来源于训练加速的一手记录（`../EXP-INFRA-01-training-speedup.md`、`../EXP-INFRA-02-sdpa-grouped-moe-ddp.md`），测量口径统一为跳板机 8×NVIDIA H800、每卡 batch=10、170 方裁块、`bench/profile_step.py` 20 步均值单步时间。
+本文方法只有约 4.11 M 参数，但 170×170 多尺度特征、12 路由专家 top-2 以及多分支融合损失使训练峰值显存达到 61–76 GB。因而，“参数少”不等于“训练开销小”。本节遵循“**profile 定位—执行形状改造—质量约束—分布式临界路径验证**”的顺序：先确认瓶颈，再解释 torch.compile、SDPA 和分组容量 MoE 三项单卡创新为何有效，最后用 NCCL、DDP 分桶、1/2/4/8 卡扩展和 straggler 对照重新判断分布式瓶颈。
 
-## 4.5.1　瓶颈定位（profile 先行）
+除特别说明外，实验在单机 8×NVIDIA H800、PyTorch 2.9.0+cu128、NCCL 2.27.5 上完成；单卡采用 batch=10、170×170 输入，5 步预热后做 3×20 步；DDP 每卡 batch=10，10 步预热后测 20–30 步。性能实验严格加载冻结权重 `model_26.pth`，学习率置零以消除权重漂移，但保留完整前向、融合损失、反向和优化器。完整实验记录及原始 JSON 见 `../EXP-INFRA-03-grouped-moe-ddp-evidence.md` 和 `../Materials/efficiency/data/`。
 
-对 v3 做单步 profile，CUDA 时间占比最高的算子如表 4-15 所示。
+## 4.5.1　profile 先行：瓶颈是执行碎片而非参数通信
 
-**表 4-15　v3 单步 CUDA 时间 Top 算子（profile 定位瓶颈）**
+原始 sparse MoE 对每个专家分别执行 `nonzero → gather → FC1 → GELU → FC2 → index_add`，造成大量动态 shape 小算子。表 4-15 给出同一训练步的关键 profile。
 
-| 算子 | CUDA 占比 | 来源 |
+**表 4-15　sparse MoE 关键算子 profile**
+
+| 算子 | 调用数 | CUDA 总时长 | 瓶颈来源 |
+|---|---:|---:|---|
+| `aten::linear` | 1504 | 236.30 ms | 多尺度、逐专家小 linear |
+| `aten::mm` | 3168 | 449.07 ms | 小矩阵前向与反向 |
+| `AddmmBackward0` | 1344 | 435.38 ms | 专家 FFN 反向 |
+| `IndexBackward0` | 1200 | 100.06 ms | top-k gather/index 反向 |
+| `aten::copy_` | 3372 | 138.38 ms | dispatch gather/scatter |
+| `aten::bmm` | 488 | 231.81 ms | 注意力及其他批量矩阵乘 |
+
+**结果分析。** 热点不是 4.11 M 参数本身，而是“数千次小 GEMM + 动态索引 + kernel launch”。这决定了优化方向：减少中间张量与 launch、将动态专家执行改造成规则批量 GEMM，而不是直接套用面向大参数模型的 ZeRO/张量并行。
+
+## 4.5.2　三项单卡创新及其耦合关系
+
+### 4.5.2.1　torch.compile：收益取决于图是否规则
+
+![torch.compile 原理图](../Materials/efficiency/figures/compile_fusion_principle.png)
+
+torch.compile 可以融合相邻 pointwise 算子并降低 Python/launch 开销，但无法凭空消除数据依赖的动态 shape。为区分“编译器收益”和“dispatch 形状收益”，本文做 2×2 交叉消融。
+
+**表 4-16　dispatch×compile 交叉消融（vanilla attention）**
+
+| dispatch | 模式 | ms/step | 相对 sparse eager |
+|---|---:|---:|---:|
+| sparse | eager | 552.63 | 1.000× |
+| grouped, α=1.25 | eager | 549.21 | 1.006× |
+| sparse | compile | 473.40 | 1.167× |
+| grouped, α=1.25 | compile | **427.47** | **1.293×** |
+
+**结果分析。** grouped 单独只快 0.6%，compile 单独快 16.7%，二者联合快 29.3%；grouped+compile 相对 sparse+compile 仍快 10.7%。因此创新点不是简单地“以 bmm 替换 linear”，而是先把执行形状改造成编译器友好的固定容量区域，再由 compile 将规则区域的收益兑现为墙钟时间。
+
+![grouped 与 compile 交互证据](../Materials/efficiency/figures/grouped_compile_synergy.png)
+
+### 4.5.2.2　SDPA：不改变权重，消除注意力中间矩阵
+
+![SDPA 原理图](../Materials/efficiency/figures/sdpa_principle.png)
+
+手写窗口注意力依次执行 `QKᵀ`、相对位置偏置、softmax 和 `P·V`，并显式保存 `[B, heads, N, N]` 中间矩阵。`scaled_dot_product_attention` 将该过程交给 PyTorch 后端，使用分块/融合内核时可避免将完整注意力矩阵往返全局显存；模型权重和注意力方程保持不变。
+
+**表 4-17　SDPA 与 compile/grouped 的组合结果（bs=10）**
+
+| 配置 | ms/step | 峰值显存 | 相对 sparse-eager |
+|---|---:|---:|---:|
+| sparse + vanilla + eager | 552.63 | 70.83 GB | 1.000× |
+| sparse + vanilla + compile | 473.40 | 68.80 GB | 1.167× |
+| sparse + SDPA + compile | 474.05 | **61.32 GB** | 1.166× |
+| grouped + vanilla + eager | 549.21 | 77.04 GB | 1.006× |
+| grouped + vanilla + compile | 427.47 | 77.03 GB | 1.293× |
+| grouped + SDPA + compile | **427.11** | **69.51 GB** | **1.294×** |
+
+**结果分析。** SDPA 在当前小窗口上主要贡献显存而非额外速度：sparse compile 显存减少约 7.5 GB，grouped compile 也减少约 7.5 GB，单步时间基本不变。该显存恰好抵消 grouped 固定容量缓冲的大部分成本，使“规则专家 GEMM”和“较低注意力激活”可以同时采用。同权重对拍的最大绝对误差为 1.7e-5，满足数值一致性要求。
+
+### 4.5.2.3　分组容量 MoE：改变执行形状，不改变 top-k 规则
+
+![分组容量 MoE 原理图](../Materials/efficiency/figures/grouped_moe_principle.png)
+
+设 token 数为 T、top-k 为 k、专家数为 E。分组路径先将 `D=T·k` 个 dispatch 按专家排序，用每个专家的起始偏移得到桶内位置，再按
+
+\[
+\mathrm{cap}=\left\lfloor \alpha\frac{Tk}{E}\right\rfloor
+\]
+
+构造 `[E, cap, C]` 右填充缓冲。所有专家的 FC1/FC2 因而收敛为两次批量 GEMM，最后按 gate 权重散回 token。超过容量的 dispatch 被丢弃；α 控制速度、显存和质量之间的权衡。
+
+**表 4-18　分组前后的算子结构**
+
+| 算子 | sparse：调用数 / CUDA | grouped：调用数 / CUDA | 变化 |
+|---|---:|---:|---:|
+| `aten::linear` | 1504 / 236.30 ms | 352 / 98.52 ms | 调用数 -76.6% |
+| `aten::mm` | 3168 / 449.07 ms | 864 / 197.55 ms | 调用数 -72.7% |
+| `AddmmBackward0` | 1344 / 435.38 ms | 192 / 183.88 ms | 调用数 -85.7% |
+| `IndexBackward0` | 1200 / 100.06 ms | Top-20 中消失 | 动态索引反向退出主路径 |
+| `aten::bmm` | 488 / 231.81 ms | 776 / 746.32 ms | 规则批量 GEMM成为主算子 |
+
+**结果分析。** grouped 确实将大量小 linear/mm 和索引反向收敛为 bmm；但 padding 使 bmm 总时长上升，所以 eager 总时间没有明显改善。该表与表 4-16 共同说明：结构改造和 compile 是不可拆分的联合创新。`copy_` 仍为 3324 次/136.79 ms，表明后续优化空间主要在 gather/scatter 融合。
+
+**表 4-19　专家数 E 对 grouped 收益的影响（SDPA+compile）**
+
+| E | sparse ms | grouped ms | grouped 单步降幅 |
+|---:|---:|---:|---:|
+| 4 | 405.76 | 511.47 | -26.1% |
+| 8 | 437.64 | 436.78 | +0.2% |
+| 12 | 470.78 | 427.35 | +9.2% |
+| 16 | 505.50 | 428.63 | +15.2% |
+| 24 | 595.99 | 426.86 | +28.4% |
+| 32 | 683.39 | 435.80 | **+36.2%** |
+
+**结果分析。** sparse 的逐专家循环随 E 增长，grouped 始终保持两次专家批量 GEMM；交叉点约为 E=8。当前 E=12 已有 9.2% 单步降幅，E=32 达 36.2%，证明该方案针对的是“多专家、小专家”的可扩展瓶颈，而非偶然优化一个固定配置。
+
+![专家数扩展曲线](../Materials/efficiency/figures/expert_count_scaling.png)
+
+### 4.5.2.4　容量—吞吐—质量的 Pareto 选择
+
+![容量与负载均衡原理](../Materials/efficiency/figures/capacity_balance_principle.png)
+
+**表 4-20　预训练权重下的容量性能与冻结质量探针**
+
+| 配置 | bs=10 samples/s | 峰值显存 | dispatch 丢弃 | 输出 MAE vs sparse | ΔMI | ΔVIF |
+|---|---:|---:|---:|---:|---:|---:|
+| sparse | 21.095 | 61.32 GB | 0 | 0 | 0 | 0 |
+| α=1.00 | **25.435** | 62.75 GB | 6.748% | 2.63e-4 | -2.92e-2 | -1.40e-3 |
+| α=1.25 | 23.413 | 69.51 GB | 0.800% | 3.67e-5 | -5.71e-3 | -2.48e-4 |
+| α=1.50 | 21.669 | 76.20 GB | 0.121% | 3.13e-6 | -8.67e-4 | -3.20e-5 |
+| α=2.00 | bs=10 OOM | — | 0.0039% | 7.82e-8 | +1.07e-5 | +6.64e-8 |
+| α=4.00 | bs=10 OOM | — | 0 | 0 | 0 | 0 |
+
+**结果分析。** α=1.0 吞吐提高 20.6%，但 6.75% 丢弃已造成可见 MI/VIF 下降；α=1.25 吞吐提高 11.0%，总体丢弃降至 0.80%，五项融合指标变化很小，是速度档；α=1.5 基本贴近 sparse，但吞吐收益只剩 2.7%，是保守档；α≥2 数值等价却无法维持 bs=10。质量实验覆盖三任务各 15 个真实样本，只能证明冻结模型的即时扰动很小，不能代替不同 α 独立训练后的最终质量统计。
+
+![容量 Pareto 曲线](../Materials/efficiency/figures/capacity_quality_pareto.png)
+
+在最大可运行 batch 下，sparse 的已验证最大吞吐为 22.20 samples/s（bs=13），α=1.0 为 25.83（bs=12，+16.4%），α=1.25 为 23.71（bs=11，+6.8%）；α≥1.5 因容量缓冲挤占 batch 空间而不再具备系统吞吐优势。故本文将 α=1.25 作为性能配置、α=1.5 作为质量保守配置，并保留 sparse 零丢弃回退。
+
+## 4.5.3　分布式优化：从“通信猜测”转向临界路径证据
+
+### 4.5.3.1　为何当前选择 DDP 而不是 FSDP/EP
+
+4.11 M FP32 参数、梯度及 Adam 两个状态合计不足 0.1 GB，而训练峰值为 61–76 GB，显存显然由激活、损失分支和容量缓冲主导。FSDP/ZeRO 切分不到 0.2% 的峰值，却需要额外 reduce-scatter/all-gather；Expert Parallel 则会将当前本地专家 bmm 改成 token all-to-all。因此当前最优并行维度是纯数据并行，分布式优化应集中在梯度缓冲、分桶重叠和 rank 负载均衡。
+
+**表 4-21　开源框架机制与当前模型的匹配**
+
+| 机制 | 解决对象 | 本模型结论 |
 |---|---|---|
-| mm / addmm / linear | ~45% | MoE 路由专家 FFN 的大量小 linear（12 专家 × 多尺度 × depth4，数千次小矩阵乘）|
-| bmm | 11.6% | 窗口注意力的批量矩阵乘 |
-| IndexBackward0 | 18%（CPU）| 稀疏 top-k 调度的 index / nonzero |
-| copy_ | 7% | 调度的 gather / scatter 拷贝 |
+| PyTorch DDP 分桶、bucket view、static graph | 梯度归约与图搜索 | **采用** |
+| Megatron overlap-grad-reduce | 通信与反向重叠 | DDP reducer 已提供同类能力 |
+| Megatron distributed optimizer / param gather | 大参数状态切分 | 参数太小，暂不采用 |
+| DeepSpeed ZeRO/FSDP | 参数/梯度/优化器显存 | 激活才是瓶颈，暂不采用 |
+| Expert Parallel A2A | 单卡放不下的大量专家 | 12 个小专家可本地容纳，暂不采用 |
+| 固定 shape + 任务/成本均衡分片 | rank straggler | **采用为数据侧原则** |
 
-可见瓶颈是**MoE 稀疏专家调度**（大量小算子 + Python 循环 + 索引/拷贝），其次是注意力 bmm，而非浮点算力本身。这一结论直接决定了优化取向：**用算子融合减少 kernel 数量、用数据并行摊薄墙钟时间**，而非盲目上混合精度或堆算力。
+**结果分析。** 本文吸收大规模框架的“连续缓冲、异步分桶、静态图”思想，但不机械照搬模型状态切分和专家并行。优化并行维度必须由参数、激活和通信的实测比例决定。
 
-## 4.5.2　单卡逐项优化（动机 + 实测）
+### 4.5.3.2　NCCL 链路与模型大小感知分桶
 
-以单卡 sparse-fp32 为基线（555.8 ms/step、峰值显存 70.8 GB），逐项优化的动机与实测如表 4-16；除采用项外，也一并列出三个被**否决**的方向（诚实负结果）。
+4/8 卡 all-reduce 微基准显示，16 KiB–1 MiB 消息主要受约 40 μs 固定启动延迟控制；4/8/16 MiB 时 4 卡总线带宽分别达到 104.85/161.94/217.62 GB/s。当前全部梯度只有约 15.67 MiB，一次归约约百微秒，远小于约 422 ms 的计算步。
 
-**表 4-16　单卡逐项优化（vs 基线为速度相对倍数，越大越快；✅ 采用 / ❌ 否决）**
+![NCCL 桶曲线](../Materials/efficiency/figures/nccl_bucket_curve.png)
 
-| 优化项 | 动机 | 单卡 ms/step | 峰值显存 | vs 基线 | 结论 |
-|---|---|---|---|---|---|
-| sparse fp32（基线）| — | 555.8 | 70.8 GB | 1.00× | 基线 |
-| torch.compile | 图融合、降 kernel launch（正打瓶颈）| 471.3 | 68.8 GB | 1.18× | ✅ 采用 |
-| SDPA / Flash 窗口注意力 | 用单次 `scaled_dot_product_attention` 替 3 个手写 bmm/softmax，走 Hopper flash 内核 | 527.7（+compile 470.1）| 63.4 GB（+compile 61.3）| 1.05×（+compile 1.18×）| ✅ 采用，数值等价且省 ~7.5 GB 显存 |
-| 分组容量 MoE（+compile）| 保持稀疏计算预算，用固定容量右填充把 E 个小 linear 收敛成 2 次批量 GEMM | 432.2 | 77.0 GB | 1.29× | ✅ 采用（创新主线），带容量-质量权衡 |
-| **grp + sdpa + compile（单卡最优）** | 叠加上述三者 | **430.8** | 69.5 GB | **1.29×** | ✅ 单卡最优 |
-| bf16 autocast | H800 张量核常规 2× 提速 | 1540 | — | 2.7× **变慢** | ❌ 否决（负结果）|
-| 稠密 batched-MoE | 用 2 个大 GEMM 替 12 个小 linear | OOM | — | — | ❌ 否决（显存爆）|
-| reduce-overhead / CUDA Graph | 消 launch 开销 | 659.8 | — | **变慢** | ❌ 否决（负结果）|
+![DDP 分桶与重叠原理](../Materials/efficiency/figures/ddp_overlap_principle.png)
 
-> 注：基线与相对倍数以单卡 20 步均值计（采用/否决中 bf16、稠密 batched 两项引自 EXP-INFRA-01，其基线口径为 560 ms，此处仅取其定性结论）。
+**表 4-22　DDP-4 梯度分桶扫描**
 
-三个负结果值得单独说明，因为它们都**与"大模型直觉"相反**：① **bf16** 在本负载（海量小算子 + 索引 + RMI 分支的 cholesky）上，cast 开销与用不满张量核的小 GEMM 使其不升反降 2.7×；② **稠密 batched-MoE** 在本 token 量（约 29 万/前向）下对"全 token × 全专家"求值直接 OOM，稀疏路径反而省显存；③ **CUDA Graph（reduce-overhead）** 因稀疏/分组调度是**数据依赖的动态 shape**（`nonzero`/容量），反复重捕获导致 1.4–4× 变慢。
+| bucket cap | 重建桶数 | ms/step | global samples/s |
+|---:|---:|---:|---:|
+| 1 MiB | 15 | 427.75 | 93.512 |
+| 2 MiB | 8 | 426.36 | 93.817 |
+| 4 MiB | 4 | 426.23 | 93.847 |
+| 8 MiB | 2 | **425.57** | **93.993** |
+| 25 MiB | 1 | 426.78 | 93.726 |
 
-其中**分组容量 MoE 调度**是本节的创新主线：它不改变"每 token 只落 top-k 专家"的稀疏计算量，但用**按专家排序 + 每专家小 cumsum 偏移**求得桶内位置（避免 O(D×E) one-hot 大 cumsum 的病态实现），再以固定容量 `cap = cap_factor·T·k/E` 的右填充布局把所有专家收敛为 2 次批量 GEMM。其对算子分布的结构性改变如表 4-17：原本"上千个小 linear + 索引/散射"被收敛为"少数规则的大 GEMM"，正利于 compile 融合与访存合并。
+**结果分析。** 1 MiB 重复支付 15 次 collective 启动延迟；25 MiB 大于全部梯度，只形成一个桶，不能在反向中提前启动；8 MiB 重建为约 8.09/7.58 MiB 两个高带宽桶，在启动次数和重叠机会之间最优。最终 static-graph 配置中，8 MiB 相比 25 MiB 也将 423.20 ms 降到 422.32 ms，方向一致。0.5 MiB 因小于 PyTorch 1 MiB 首桶约束而不支持。
 
-**表 4-17　分组容量调度前后单步算子分布（profile 证实创新落地）**
+![DDP 分桶实测](../Materials/efficiency/figures/ddp_bucket_sweep.png)
 
-| 算子 | 稀疏调度 sparse | 分组调度 grouped |
-|---|---|---|
-| `aten::mm` 调用数 / CUDA | 6336 次 / 949 ms（22%）| 1728 次 / 417 ms（9%）|
-| `IndexBackward0` | 2400 次 / 322 ms（18%）| 消失 |
-| `aten::bmm`（专家批量 GEMM）| 976 次 / 498 ms | 1552 次 / 1.58 s（35.75%，成为主算子）|
-| `aten::cumsum` | — | 排序法后消失（旧 one-hot 实现曾占 82%）|
+### 4.5.3.3　连续梯度、fused Adam 与静态图
 
-正确性方面，同权重下 SDPA 与手写注意力输出的 max|Δ| = 1.7e-5、分组（高容量无丢弃）与稀疏的 max|Δ| = 1.25e-5，均确认改造**数值等价**；仅当容量系数收紧到 1.25 且**未训练**（随机初始化、负载极不均）时才出现溢出丢弃（max|Δ| = 6.7e-2），训练时由负载均衡辅助损失（§4.4 的 aux_weight）均衡负载后收敛。
+**表 4-23　DDP-4 逐项消融**
 
-## 4.5.3　分布式扩展（DDP）
+| 配置 | ms/step | global samples/s | 相对上一项 |
+|---|---:|---:|---:|
+| baseline：25 MiB、find-unused | 439.63 | 90.986 | — |
+| + `gradient_as_bucket_view` | 437.70 | 91.388 | +0.44% |
+| + fused Adam | 424.99 | 94.120 | +2.99% |
+| + static graph、关闭 unused 搜索 | 423.56 | 94.437 | +0.34% |
+| + 8 MiB 两桶 | **422.32** | **94.716** | +0.30% |
 
-针对"小模型的大量微小专家梯度使 all-reduce 延迟受限"，本文用 DDP 数据并行摊薄墙钟时间，并做通信优化（`gradient_as_bucket_view`、可调梯度分桶、fused Adam）。第一阶段仅用 torch.compile + DDP-4，即把单卡 594 s/epoch 降到约 197 s/epoch（**≈ 3.0× 墙钟提速**）；小模型（4 M）受通信延迟制约，4 卡实得约 2.6–3×（而非线性 4×）。第二阶段叠加 SDPA + 分组 MoE + 通信优化后，两条路径的 DDP-4 稳态单步与整 epoch 时间如表 4-18。
+**结果分析。** 累计吞吐提升 4.10%，最大贡献来自 fused Adam，说明大量小参数的 optimizer launch 比 NCCL 更值得优化。bucket view 避免梯度到通信桶的拷贝；DDP 日志只发现 768 B unused 参数，且使用集合固定，因此可以安全启用 static graph。最终 8 MiB 下 noop/default/sync 分别为 422.63/422.32/422.83 ms，最大差 0.51 ms，小于单步 0.62–0.68 ms 标准差，说明通信暴露已进入测量噪声，不能再把单卡—DDP 差值全部解释为 NCCL。
 
-**表 4-18　DDP-4 扩展效率（每卡 batch=10，稳态为 warmup 后均值）**
+### 4.5.3.4　卡数扩展与最慢 rank
 
-| 训练路径 | 单卡最优 ms/step | DDP-4 稳态 ms/step | 通信开销 | DDP-4 整 epoch |
-|---|---|---|---|---|
-| sparse + compile + touch-all（阶段一最优）| 471.3 | 503.8 | +7.0% | 143.7 s |
-| grp + sdpa + compile + fusedAdam + bucket-view（阶段二最优）| **430.8** | **456.4** | **+5.9%** | **135.8 s** |
+**表 4-24　1/2/4/8 卡扩展（每卡 batch=10）**
 
-> 注：表 4-18 的 epoch 口径为 265 步/卡（12000 样本 4 卡均分），与第一阶段的 594→197 s（1061 步/epoch）为不同测量口径，故两阶段 epoch 绝对值不可直接横比，仅各自表内的相对倍数可比。
+| GPU 数 | ms/step | global samples/s | 扩展效率 |
+|---:|---:|---:|---:|
+| 1 | 421.37 | 23.732 | 100.00% |
+| 2 | 422.63 | 47.323 | 99.70% |
+| 4 | 423.20 | 94.519 | 99.56% |
+| 8 | 425.22 | 188.138 | **99.08%** |
 
-分组调度产生的**规则大 GEMM 更易与 all-reduce 通信重叠**，加之 fused Adam 减少了大量小参数张量上的 optimizer launch，使 4 卡通信开销从 7.0% 降到 5.9%、扩展效率约 **94%**。相对同轮的原始单卡 fp32 基线（12000 样本、1200 步 ≈ 667 s），阶段二最优 135.8 s 达到**约 4.9× 端到端加速**，其中数据并行贡献约 3.7×、单卡 kernel 优化（SDPA + 分组）贡献 1.29×。
+**结果分析。** 8 卡达到单卡吞吐的 7.93×。这修正了旧版“轻量模型 DDP 严重通信受限”的推断：在稳定输入和单机高速互连下，当前模型近似线性扩展；分布式下一瓶颈不是 all-reduce，而是每卡计算与输入供给。
 
-## 4.5.4　本节小结与 AI-infra 洞见
+**表 4-25　单 rank straggler 敏感性**
 
-本节以 profile 先行、逐项实测的方式优化了本文方法的训练效率：单卡通过 torch.compile + SDPA + 分组容量 MoE 获得 1.29× 加速并省约 7.5 GB 显存，分布式通过 DDP-4 + 通信优化把扩展效率抬到约 94%，端到端最高约 4.9×（保守口径亦有已充分验证的 3.0×）。可提炼出四条对轻量 MoE 融合模型普遍适用的经验：
+| rank0 注入停顿 | DDP-4 ms/step | 全局额外耗时 |
+|---:|---:|---:|
+| 0 ms | 422.32 | 0 |
+| 2 ms | 424.41 | +2.10 ms |
+| 5 ms | 427.52 | +5.20 ms |
+| 10 ms | 432.55 | +10.24 ms |
 
-1. **profile 决定取舍**：本模型瓶颈是"大量小算子 / 稀疏调度"而非算力，故优化重点是融合与并行，而非精度或堆算力。
-2. **bf16 非万灵药**：小算子 + 索引主导的负载上 bf16 反而更慢，与"大 GEMM 主导的大模型"结论相反。
-3. **稠密 batched ↔ 稀疏调度是显存 / launch 的权衡**：本规模下稠密融合 OOM，稀疏 + 分组容量 + compile 更实际；分组的收益随专家数 E 增长。
-4. **小模型 DDP 通信受限**：微小梯度使 all-reduce 延迟受限，需靠通信优化与规则大 GEMM 的计算-通信重叠逼近线性扩展。
+**结果分析。** 一个 rank 的停顿几乎 1:1 进入全局步时，其他卡在 collective 等待；同步后的 rank 完成时间差仍只有约 0.08 ms，因此仅看 step 尾部 CV 会掩盖上游 straggler。生产训练需保持固定 crop、每 rank 等 batch、`drop_last=True`，并按任务和样本成本分层打散；若引入变分辨率，应按像素/token 数或历史耗时均衡，而不是只均衡样本数。
 
-需诚实说明的**局限**：分组容量调度在收紧容量（如 cap=1.25）时会丢弃溢出 token，其对小数据融合质量的影响尚未用统一评测量化确认，故正式训练默认仍回退到已验证的稀疏路径，分组路径作为可切换的加速选项保留；将"分组容量-质量权衡"的系统性评测，以及专家并行（EP）/ FSDP2 的更大规模扩展，列为后续工作。
+![DDP 扩展与 straggler](../Materials/efficiency/figures/ddp_scaling_straggler.png)
+
+![rank 负载均衡原理](../Materials/efficiency/figures/ddp_rank_balance_principle.png)
+
+路由负载本身也存在 rank 差异：四个 rank 的 expert load CV 为 0.148–0.154，dispatch 丢弃率为 0.578%–0.733%。但 grouped 在每个 rank 都执行相同 `[E, cap, C]` 主 GEMM，最终 rank 时间 CV 仍约 0.03%。固定容量因此不仅利于 compile，也将路由不均与主计算形状解耦，是分布式负载稳定器。
+
+## 4.5.4　本节小结
+
+本节得到五点结论：
+
+1. **profile 决定优化对象。** 当前热点是小 GEMM、动态索引和 launch，而非参数规模；
+2. **三项单卡创新分工明确。** compile 消 launch，SDPA 省注意力中间激活，grouped 将专家执行改造成规则批量 GEMM；grouped 与 compile 联合达到 1.294×，而非各自收益的简单相加；
+3. **grouped 的价值随专家数增长。** E=12 已降低 9.2% 单步，E=32 降低 36.2%，但 E=4 会变慢；
+4. **容量必须与质量和显存共同选择。** α=1.25 是速度档，α=1.5 是保守档，sparse 是零丢弃回退；冻结探针不能替代重新训练；
+5. **当前分布式不是通信受限。** 最终 DDP 1→8 卡效率为 99.08%，真正需要防范的是单 rank 输入/计算 straggler。推荐配置为 `grouped α=1.25 + SDPA + compile + gradient_as_bucket_view + fused Adam + static_graph + 8 MiB bucket`。
+
+局限包括：质量仅做 45 样本冻结探针；多卡实验仅覆盖单机高速互连，不能外推跨节点；通信模式差异已进入噪声，本文不报告不可靠的隐藏比例；gather/scatter 的 `copy_` 尚未被融合，是下一步自定义 Triton kernel 的候选方向。

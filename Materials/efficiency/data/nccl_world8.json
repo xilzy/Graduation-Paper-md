@@ -1,0 +1,105 @@
+{
+  "schema": "nccl-allreduce-v1",
+  "world_size": 8,
+  "torch_version": "2.9.0+cu128",
+  "nccl_version": [
+    2,
+    27,
+    5
+  ],
+  "gpu": "NVIDIA H800",
+  "warmup": 10,
+  "iters": 100,
+  "rows": [
+    {
+      "size_mb": 0.015625,
+      "bytes": 16384,
+      "latency_mean_ms": 0.04087487984448671,
+      "latency_std_ms": 0.006048621569761735,
+      "latency_p50_ms": 0.03951999917626381,
+      "latency_p95_ms": 0.045929599553346634,
+      "algorithm_bandwidth_gbps": 0.40083298256373734,
+      "bus_bandwidth_gbps": 0.7014577194865403
+    },
+    {
+      "size_mb": 0.0625,
+      "bytes": 65536,
+      "latency_mean_ms": 0.04129984010010958,
+      "latency_std_ms": 0.007628449732912132,
+      "latency_p50_ms": 0.03964800015091896,
+      "latency_p95_ms": 0.04694559965282678,
+      "algorithm_bandwidth_gbps": 1.5868342308624608,
+      "bus_bandwidth_gbps": 2.7769599040093063
+    },
+    {
+      "size_mb": 0.25,
+      "bytes": 262144,
+      "latency_mean_ms": 0.06400256015360356,
+      "latency_std_ms": 0.16503513036745437,
+      "latency_p50_ms": 0.03956799954175949,
+      "latency_p95_ms": 0.04509440027177333,
+      "algorithm_bandwidth_gbps": 4.095836156723497,
+      "bus_bandwidth_gbps": 7.167713274266119
+    },
+    {
+      "size_mb": 0.5,
+      "bytes": 524288,
+      "latency_mean_ms": 0.07420896019786596,
+      "latency_std_ms": 0.2356950387550149,
+      "latency_p50_ms": 0.039903998374938965,
+      "latency_p95_ms": 0.04591840170323848,
+      "algorithm_bandwidth_gbps": 7.065022857106102,
+      "bus_bandwidth_gbps": 12.363789999935678
+    },
+    {
+      "size_mb": 1.0,
+      "bytes": 1048576,
+      "latency_mean_ms": 0.08459071926772595,
+      "latency_std_ms": 0.27630094749674466,
+      "latency_p50_ms": 0.04360000044107437,
+      "latency_p95_ms": 0.05059680119156837,
+      "algorithm_bandwidth_gbps": 12.395875210391608,
+      "bus_bandwidth_gbps": 21.692781618185315
+    },
+    {
+      "size_mb": 2.0,
+      "bytes": 2097152,
+      "latency_mean_ms": 0.05840703994035721,
+      "latency_std_ms": 0.0038509482815739546,
+      "latency_p50_ms": 0.05748800002038479,
+      "latency_p95_ms": 0.06205759923905134,
+      "algorithm_bandwidth_gbps": 35.9058086515174,
+      "bus_bandwidth_gbps": 62.835165140155446
+    },
+    {
+      "size_mb": 4.0,
+      "bytes": 4194304,
+      "latency_mean_ms": 0.08641087986528874,
+      "latency_std_ms": 0.11435402601156659,
+      "latency_p50_ms": 0.06918399780988693,
+      "latency_p95_ms": 0.0761215966194868,
+      "algorithm_bandwidth_gbps": 48.53907293316258,
+      "bus_bandwidth_gbps": 84.94337763303452
+    },
+    {
+      "size_mb": 8.0,
+      "bytes": 8388608,
+      "latency_mean_ms": 0.13097024001181126,
+      "latency_std_ms": 0.18374457570646913,
+      "latency_p50_ms": 0.09299200028181076,
+      "latency_p95_ms": 0.11730240210890766,
+      "algorithm_bandwidth_gbps": 64.04972609994066,
+      "bus_bandwidth_gbps": 112.08702067489615
+    },
+    {
+      "size_mb": 16.0,
+      "bytes": 16777216,
+      "latency_mean_ms": 0.15733632028102876,
+      "latency_std_ms": 0.15325674335843845,
+      "latency_p50_ms": 0.1351199969649315,
+      "latency_p95_ms": 0.14169759824872016,
+      "algorithm_bandwidth_gbps": 106.63282305085762,
+      "bus_bandwidth_gbps": 186.60744033900085
+    }
+  ]
+}

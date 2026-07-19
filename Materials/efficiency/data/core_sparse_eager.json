@@ -1,0 +1,42 @@
+{
+  "schema": "grouped-moe-single-v1",
+  "torch_version": "2.9.0+cu128",
+  "gpu": "NVIDIA H800",
+  "seed": 20260719,
+  "config": {
+    "bs": 10,
+    "patch": 170,
+    "out_channel": 96,
+    "depth": 4,
+    "n_routed": 12,
+    "top_k": 2,
+    "combine": "sparse",
+    "cap_factor": 1.25,
+    "attn": "vanilla",
+    "compile": false,
+    "compile_mode": "default",
+    "fused_adam": false
+  },
+  "measurement": {
+    "warmup_steps": 5,
+    "steps_per_repeat": 20,
+    "repeats": 3,
+    "repeat_ms": [
+      554.2987539025489,
+      551.4587732002838,
+      552.1333807497285
+    ],
+    "mean_ms": 552.6303026175204,
+    "std_ms": 1.4837692220581202,
+    "samples_per_second": 18.095279887178165,
+    "peak_memory_gb": 70.833455104,
+    "warmup_seconds_including_compile": 3.8212669499916956,
+    "last_loss": 1.862487210418701
+  },
+  "dynamo_counters": {
+    "stats": {},
+    "graph_break": {},
+    "inductor": {}
+  },
+  "profile_top_ops": []
+}

@@ -1,0 +1,60 @@
+{
+  "schema": "grouped-moe-single-v1",
+  "torch_version": "2.9.0+cu128",
+  "gpu": "NVIDIA H800",
+  "seed": 20260719,
+  "config": {
+    "bs": 10,
+    "patch": 170,
+    "out_channel": 96,
+    "depth": 4,
+    "n_routed": 24,
+    "top_k": 2,
+    "combine": "grouped",
+    "cap_factor": 1.25,
+    "attn": "sdpa",
+    "compile": true,
+    "compile_mode": "default",
+    "fused_adam": false
+  },
+  "measurement": {
+    "warmup_steps": 5,
+    "steps_per_repeat": 20,
+    "repeats": 3,
+    "repeat_ms": [
+      426.6746957990108,
+      426.5755840984639,
+      427.338045349461
+    ],
+    "mean_ms": 426.8627750823119,
+    "std_ms": 0.41456863415280837,
+    "samples_per_second": 23.42673239209416,
+    "peak_memory_gb": 69.925822464,
+    "warmup_seconds_including_compile": 23.678653987008147,
+    "last_loss": 1.8366858332102947
+  },
+  "dynamo_counters": {
+    "stats": {
+      "calls_captured": 227,
+      "unique_graphs": 10
+    },
+    "graph_break": {
+      "Dynamic shape operator\n  Explanation: Operator `aten.bincount.default`'s output shape depends on input Tensor data.\n  Hint: Enable tracing of dynamic shape operators with `torch._dynamo.config.capture_dynamic_output_shape_ops = True`\n\n  Developer debug context: aten.bincount.default\n\n For more details about this graph break, please visit: https://meta-pytorch.github.io/compile-graph-break-site/gb/gb0036.html": 4,
+      "Dynamic shape operator\n  Explanation: Operator `aten.nonzero.default`'s output shape depends on input Tensor data.\n  Hint: Enable tracing of dynamic shape operators with `torch._dynamo.config.capture_dynamic_output_shape_ops = True`\n\n  Developer debug context: aten.nonzero.default\n\n For more details about this graph break, please visit: https://meta-pytorch.github.io/compile-graph-break-site/gb/gb0036.html": 1
+    },
+    "inductor": {
+      "triton_bundler_load_static_autotuner": 71,
+      "async_compile_cache_miss": 335,
+      "async_compile_cache_hit": 197,
+      "extern_calls": 76,
+      "fxgraph_cache_hit": 9,
+      "pattern_matcher_count": 41,
+      "pattern_matcher_nodes": 48,
+      "fxgraph_cache_miss": 9,
+      "triton_bundler_save_kernel": 888,
+      "triton_bundler_save_static_autotuner": 9,
+      "benchmarking.InductorBenchmarker.benchmark_gpu": 73
+    }
+  },
+  "profile_top_ops": []
+}

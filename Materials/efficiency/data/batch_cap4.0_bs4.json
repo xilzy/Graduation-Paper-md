@@ -1,0 +1,60 @@
+{
+  "schema": "grouped-moe-single-v1",
+  "torch_version": "2.9.0+cu128",
+  "gpu": "NVIDIA H800",
+  "seed": 20260719,
+  "config": {
+    "bs": 4,
+    "patch": 170,
+    "out_channel": 96,
+    "depth": 4,
+    "n_routed": 12,
+    "top_k": 2,
+    "combine": "grouped",
+    "cap_factor": 4.0,
+    "attn": "sdpa",
+    "compile": true,
+    "compile_mode": "default",
+    "fused_adam": false
+  },
+  "measurement": {
+    "warmup_steps": 5,
+    "steps_per_repeat": 20,
+    "repeats": 3,
+    "repeat_ms": [
+      345.59889685187954,
+      344.2799286014633,
+      344.1237575490959
+    ],
+    "mean_ms": 344.6675276674796,
+    "std_ms": 0.8103602702728987,
+    "samples_per_second": 11.60538686968802,
+    "peak_memory_gb": 57.199233536,
+    "warmup_seconds_including_compile": 33.78855519701028,
+    "last_loss": 1.8301294597809412
+  },
+  "dynamo_counters": {
+    "stats": {
+      "calls_captured": 198,
+      "unique_graphs": 9
+    },
+    "graph_break": {
+      "Dynamic shape operator\n  Explanation: Operator `aten.bincount.default`'s output shape depends on input Tensor data.\n  Hint: Enable tracing of dynamic shape operators with `torch._dynamo.config.capture_dynamic_output_shape_ops = True`\n\n  Developer debug context: aten.bincount.default\n\n For more details about this graph break, please visit: https://meta-pytorch.github.io/compile-graph-break-site/gb/gb0036.html": 3,
+      "Dynamic shape operator\n  Explanation: Operator `aten.nonzero.default`'s output shape depends on input Tensor data.\n  Hint: Enable tracing of dynamic shape operators with `torch._dynamo.config.capture_dynamic_output_shape_ops = True`\n\n  Developer debug context: aten.nonzero.default\n\n For more details about this graph break, please visit: https://meta-pytorch.github.io/compile-graph-break-site/gb/gb0036.html": 1
+    },
+    "inductor": {
+      "pattern_matcher_count": 207,
+      "pattern_matcher_nodes": 249,
+      "benchmarking.InductorBenchmarker.benchmark_gpu": 246,
+      "fxgraph_cache_miss": 15,
+      "extern_calls": 70,
+      "async_compile_cache_miss": 239,
+      "triton_bundler_save_kernel": 2080,
+      "triton_bundler_save_static_autotuner": 14,
+      "async_compile_cache_hit": 114,
+      "triton_bundler_load_static_autotuner": 1,
+      "fxgraph_cache_hit": 1
+    }
+  },
+  "profile_top_ops": []
+}

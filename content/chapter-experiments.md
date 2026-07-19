@@ -198,16 +198,17 @@
 
 ## 4.4　训练效率与分布式优化（扩展贡献，问题(5)）
 
-写作要点（详见 `../EXP-INFRA-01-training-speedup.md`、`../EXP-INFRA-02-sdpa-grouped-moe-ddp.md`）：
+写作要点（详见 `../EXP-INFRA-01-training-speedup.md`、`../EXP-INFRA-02-sdpa-grouped-moe-ddp.md`、`../EXP-INFRA-03-grouped-moe-ddp-evidence.md`）：
 - **profile 先行**：v3 单步 CUDA 时间瓶颈是 **MoE 稀疏专家调度**（大量小 linear ~45% + 稀疏 top-k 的 index/copy ~18%+7% + 注意力 bmm 11.6%），而非算力——决定优化取舍。
 - 逐项优化与实测（why + effect）：
   - **torch.compile** 图融合降 kernel launch：560→472 ms/step（1.19×）✅
   - **bf16 autocast 反例**：560→1540 ms（2.7× 变慢）——小算子/index/cholesky 主导的负载，bf16 cast 开销 + 小 GEMM 用不满张量核，得不偿失 ❌
   - **稠密 batched-MoE 反例**：此 token 量（~29 万/前向）下 OOM ❌；稀疏 + compile 更实际。
-  - **DDP-4 数据并行 + compile**：epoch 594s→**197s（≈3.0×）** ✅；小模型(4M) all-reduce 延迟受限，4 卡实得 2.6–3×（非线性 4×）。
-  - **续作（INFRA-02）**：SDPA/Flash 窗口注意力（打 bmm）、**容量受限分组 MoE 调度**（把 E 个小 linear 收敛为 2 次批量 GEMM，论文创新主线）、DDP 通信优化（bucket-view/fused Adam）；单卡 SDPA 省 ~7.5GB、1.29×，DDP-4 epoch 143.7→135.8s。
-- AI-infra 洞见（可直接写入论文）：① profile 决定取舍；② bf16 非万灵药（与大 GEMM 主导的大模型结论相反）；③ 稠密 batched ↔ 稀疏调度是显存/launch 权衡；④ 小模型 DDP 通信受限。
-- 【表 4-11】训练加速逐项消融（优化项/动机/实测 step·epoch·显存/结论）`已就绪于 INFRA-01/02，整理成表即可`。
+  - **DDP-4 数据并行 + compile（历史端到端）**：epoch 594s→**197s（≈3.0×）** ✅；该口径混有 DataLoader/编译等开销，不能直接视为纯通信效率。
+  - **续作（INFRA-02/03）**：SDPA 省约 7.5GB；**容量受限分组 MoE**把 E 个小 linear 收敛为 2 次批量 GEMM，和 compile 联合达到 1.29×；E=12→32 的单步降幅由 9.2% 扩大到 36.2%；α=1.25 的冻结探针丢弃 0.80%、输出 MAE 3.67e-5。
+  - **分布式复核（INFRA-03）**：8 MiB 两桶 + bucket-view + fused Adam + static graph；1→8 卡扩展效率 **99.08%**，通信模式差异低于步内噪声；单 rank 2/5/10ms 停顿几乎 1:1 传导为全局损失。
+- AI-infra 洞见（可直接写入论文）：① profile 决定取舍；② bf16 非万灵药；③ grouped 的收益来自“规则执行形状×compile”，并随专家数增长；④ 当前 4M 模型不是 NCCL 受限，分布式首要风险是输入/计算 straggler，FSDP/EP 暂不匹配。
+  - 【表 4-15~4-25 + 原理/证据图】`已就绪于 content/section-efficiency.md 与 INFRA-03`。
 
 ---
 
@@ -216,7 +217,7 @@
 写作要点：
 - **达成**：一套权重三任务综合进入 SOTA 前列（平均排名 irvis#5 / medical#4 / gfp#4），7 个全场第一，逐创新点消融全正向，训练 3.0× 提速；从中游（11–14 名）跃升。
 - **局限（诚实）**：① 全场第一集中在信息/保真族（决策图凸组合天然强项），细节/锐度族（SF/SD/EN）仍非第一，被 CDDFuse/DenseFuse/SwinFusion 压住；② irvis 第 5 个 Top-3 卡在极紧 SD 墙（41.0 vs #3 的 41.4），加宽/加深/IR-VIS 专精/INN 高频分支充分实验（~20 组）均未翻越，锐化-平滑 Pareto 互斥——已确认为当前架构的 Pareto 上限；③ 评测规模 30–50 图/单 seed，终评需全测试集 + 多 seed + 显著性检验。
-- **未来工作**：分解-重建强骨干（INN 高频分支 + 相关性分解损失 + 两阶段）把 SD 推过 41.4；专家并行(EP)/FSDP2 扩展分布式；多 seed 显著性终评。
+- **未来工作**：分解-重建强骨干（INN 高频分支 + 相关性分解损失 + 两阶段）把 SD 推过 41.4；完成 grouped 不同 α 的独立训练与多 seed 显著性终评；仅在跨节点、参数或专家规模显著扩大后重新评估 EP/FSDP。
 
 ---
 

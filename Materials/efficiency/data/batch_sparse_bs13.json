@@ -1,0 +1,59 @@
+{
+  "schema": "grouped-moe-single-v1",
+  "torch_version": "2.9.0+cu128",
+  "gpu": "NVIDIA H800",
+  "seed": 20260719,
+  "config": {
+    "bs": 13,
+    "patch": 170,
+    "out_channel": 96,
+    "depth": 4,
+    "n_routed": 12,
+    "top_k": 2,
+    "combine": "sparse",
+    "cap_factor": 1.25,
+    "attn": "sdpa",
+    "compile": true,
+    "compile_mode": "default",
+    "fused_adam": false
+  },
+  "measurement": {
+    "warmup_steps": 5,
+    "steps_per_repeat": 20,
+    "repeats": 3,
+    "repeat_ms": [
+      587.0693988515995,
+      584.5215081499191,
+      585.1659483014373
+    ],
+    "mean_ms": 585.5856184343187,
+    "std_ms": 1.3247750836469934,
+    "samples_per_second": 22.19999875467933,
+    "peak_memory_gb": 79.554897408,
+    "warmup_seconds_including_compile": 31.737079014012124,
+    "last_loss": 1.8953692045578396
+  },
+  "dynamo_counters": {
+    "stats": {
+      "calls_captured": 128,
+      "unique_graphs": 7
+    },
+    "graph_break": {
+      "Dynamic shape operator\n  Explanation: Operator `aten.nonzero.default`'s output shape depends on input Tensor data.\n  Hint: Enable tracing of dynamic shape operators with `torch._dynamo.config.capture_dynamic_output_shape_ops = True`\n\n  Developer debug context: aten.nonzero.default\n\n For more details about this graph break, please visit: https://meta-pytorch.github.io/compile-graph-break-site/gb/gb0036.html": 1
+    },
+    "inductor": {
+      "pattern_matcher_count": 176,
+      "pattern_matcher_nodes": 213,
+      "benchmarking.InductorBenchmarker.benchmark_gpu": 174,
+      "fxgraph_cache_miss": 10,
+      "extern_calls": 62,
+      "async_compile_cache_miss": 162,
+      "triton_bundler_save_kernel": 1336,
+      "triton_bundler_save_static_autotuner": 9,
+      "async_compile_cache_hit": 79,
+      "triton_bundler_load_static_autotuner": 7,
+      "fxgraph_cache_hit": 3
+    }
+  },
+  "profile_top_ops": []
+}

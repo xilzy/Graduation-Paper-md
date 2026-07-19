@@ -1,0 +1,191 @@
+{
+  "schema": "grouped-moe-single-v1",
+  "torch_version": "2.9.0+cu128",
+  "gpu": "NVIDIA H800",
+  "seed": 20260719,
+  "config": {
+    "bs": 10,
+    "patch": 170,
+    "out_channel": 96,
+    "depth": 4,
+    "n_routed": 12,
+    "top_k": 2,
+    "combine": "sparse",
+    "cap_factor": 1.25,
+    "attn": "vanilla",
+    "compile": false,
+    "compile_mode": "default",
+    "fused_adam": false
+  },
+  "measurement": {
+    "warmup_steps": 3,
+    "steps_per_repeat": 5,
+    "repeats": 1,
+    "repeat_ms": [
+      546.9787498004735
+    ],
+    "mean_ms": 546.9787498004735,
+    "std_ms": 0.0,
+    "samples_per_second": 18.28224588916442,
+    "peak_memory_gb": 70.833455104,
+    "warmup_seconds_including_compile": 2.6800439140060917,
+    "last_loss": 2.351494661455172
+  },
+  "dynamo_counters": {
+    "stats": {},
+    "graph_break": {},
+    "inductor": {}
+  },
+  "profile_top_ops": [
+    {
+      "op": "autograd::engine::evaluate_function: AddmmBackward0",
+      "count": 1344,
+      "device_time_ms": 536.6214770000021,
+      "cpu_time_ms": 307.45853000000466
+    },
+    {
+      "op": "aten::mm",
+      "count": 3168,
+      "device_time_ms": 449.0665919999972,
+      "cpu_time_ms": 196.73767699999914
+    },
+    {
+      "op": "AddmmBackward0",
+      "count": 1344,
+      "device_time_ms": 435.3829019999957,
+      "cpu_time_ms": 208.15454900000273
+    },
+    {
+      "op": "aten::linear",
+      "count": 1504,
+      "device_time_ms": 236.3005339999966,
+      "cpu_time_ms": 84.34291200000132
+    },
+    {
+      "op": "aten::addmm",
+      "count": 1344,
+      "device_time_ms": 231.95415399999695,
+      "cpu_time_ms": 62.299390000002326
+    },
+    {
+      "op": "aten::bmm",
+      "count": 488,
+      "device_time_ms": 231.81348999999946,
+      "cpu_time_ms": 13.273508999999912
+    },
+    {
+      "op": "void cutlass::Kernel2<cutlass_80_simt_sgemm_128x128_8x4_nt_align1>(cutlass_80_simt_sgemm_128x128_8x4_nt_align1::Params)",
+      "count": 1196,
+      "device_time_ms": 170.54663599999344,
+      "cpu_time_ms": 0.0
+    },
+    {
+      "op": "autograd::engine::evaluate_function: BmmBackward0",
+      "count": 156,
+      "device_time_ms": 159.17966499999864,
+      "cpu_time_ms": 11.053452000000135
+    },
+    {
+      "op": "BmmBackward0",
+      "count": 156,
+      "device_time_ms": 159.17966499999864,
+      "cpu_time_ms": 9.68857300000009
+    },
+    {
+      "op": "autograd::engine::evaluate_function: IndexBackward0",
+      "count": 1200,
+      "device_time_ms": 157.60513899998185,
+      "cpu_time_ms": 442.6641829999972
+    },
+    {
+      "op": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul> >(int, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul>)",
+      "count": 4132,
+      "device_time_ms": 153.12629300000873,
+      "cpu_time_ms": 0.0
+    },
+    {
+      "op": "aten::copy_",
+      "count": 3372,
+      "device_time_ms": 138.37946200000025,
+      "cpu_time_ms": 55.164318999997995
+    },
+    {
+      "op": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1})",
+      "count": 1756,
+      "device_time_ms": 129.15735300000026,
+      "cpu_time_ms": 0.0
+    },
+    {
+      "op": "aten::sum",
+      "count": 2520,
+      "device_time_ms": 122.74020699999728,
+      "cpu_time_ms": 90.32130100000626
+    },
+    {
+      "op": "aten::add_",
+      "count": 5216,
+      "device_time_ms": 121.10553800000147,
+      "cpu_time_ms": 101.52483300000665
+    },
+    {
+      "op": "aten::clone",
+      "count": 1104,
+      "device_time_ms": 112.28628200000082,
+      "cpu_time_ms": 23.202133000001695
+    },
+    {
+      "op": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+      "count": 1684,
+      "device_time_ms": 109.5310169999976,
+      "cpu_time_ms": 0.0
+    },
+    {
+      "op": "sm80_xmma_gemm_f32f32_f32f32_f32_nn_n_tilesize128x32x8_stage3_warpsize2x2x1_ffma_aligna4_alignc4_execute_kernel__5x_cublas",
+      "count": 485,
+      "device_time_ms": 103.0913630000028,
+      "cpu_time_ms": 0.0
+    },
+    {
+      "op": "IndexBackward0",
+      "count": 1200,
+      "device_time_ms": 100.05702999998323,
+      "cpu_time_ms": 422.4860279999999
+    },
+    {
+      "op": "aten::matmul",
+      "count": 348,
+      "device_time_ms": 95.5820930000014,
+      "cpu_time_ms": 22.543068000001615
+    },
+    {
+      "op": "aten::_index_put_impl_",
+      "count": 1200,
+      "device_time_ms": 79.933909999981,
+      "cpu_time_ms": 367.55895600000116
+    },
+    {
+      "op": "sm80_xmma_gemm_f32f32_f32f32_f32_tn_n_tilesize128x32x8_stage3_warpsize2x2x1_ffma_aligna4_alignc4_execute_kernel__5x_cublas",
+      "count": 628,
+      "device_time_ms": 79.40038199999955,
+      "cpu_time_ms": 0.0
+    },
+    {
+      "op": "sm80_xmma_gemm_f32f32_f32f32_f32_nn_n_tilesize64x128x8_stage3_warpsize1x4x1_ffma_aligna4_alignc4_execute_kernel__5x_cublas",
+      "count": 434,
+      "device_time_ms": 79.111328000002,
+      "cpu_time_ms": 0.0
+    },
+    {
+      "op": "autograd::engine::evaluate_function: SelectBackward0",
+      "count": 720,
+      "device_time_ms": 73.67914000000488,
+      "cpu_time_ms": 76.92390699999646
+    },
+    {
+      "op": "aten::mul",
+      "count": 3664,
+      "device_time_ms": 71.52448799999283,
+      "cpu_time_ms": 96.1914650000007
+    }
+  ]
+}
