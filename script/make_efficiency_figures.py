@@ -477,6 +477,172 @@ def data_plots(data_dir: Path, output_dir: Path):
         fig.tight_layout(); save(fig, output_dir, "ddp_scaling_straggler")
 
 
+def bottleneck_plots(data_dir: Path, output_dir: Path):
+    summary = load_json(data_dir / "bottleneck_summary.json")
+    bottleneck_dir = data_dir / "bottleneck"
+    if not summary:
+        return
+
+    # Direct evidence that current DDP is compute/straggler bound.
+    fig, axes = plt.subplots(1, 3, figsize=(15.5, 4.8))
+    ax = axes[0]
+    worlds = [4, 8]
+    deltas = [
+        summary["paired_communication_deltas"][
+            f"w{world}_default_minus_noop_ms"]
+        for world in worlds
+    ]
+    means = [row["mean"] for row in deltas]
+    lower = [row["mean"] - row["ci95_low"] for row in deltas]
+    upper = [row["ci95_high"] - row["mean"] for row in deltas]
+    ax.errorbar(worlds, means, yerr=[lower, upper], fmt="o",
+                color=COLORS["blue"], capsize=6, linewidth=2)
+    ax.axhline(0, color=COLORS["gray"], linestyle="--", linewidth=1)
+    ax.set_xticks(worlds); ax.set_xlabel("GPU count")
+    ax.set_ylabel("default − noop step time (ms)")
+    ax.set_title("(a) Exposed DDP cost: 95% CI crosses zero")
+    ax.grid(alpha=0.22)
+
+    ax = axes[1]
+    hook = summary["timed_hook"]["w8"]
+    points = [
+        ("first bucket ready", hook["first_bucket_ready_ms_mean"]["mean"],
+         COLORS["blue"], (-50, 22)),
+        ("last bucket ready", hook["last_bucket_ready_ms_mean"]["mean"],
+         COLORS["purple"], (-45, 68)),
+        ("all comm complete", hook["all_comm_complete_ms_mean"]["mean"],
+         COLORS["green"], (42, 22)),
+        ("step end", hook["step_end_ms_mean"]["mean"],
+         COLORS["orange"], (38, 68)),
+    ]
+    for label, value, color, offset in points:
+        ax.scatter(value, 0, s=90, color=color, zorder=3)
+        ax.annotate(f"{label}\n{value:.2f} ms", (value, 0),
+                    xytext=offset,
+                    textcoords="offset points", ha="center", fontsize=8,
+                    arrowprops={"arrowstyle": "-", "color": color})
+    tail = hook["comm_tail_after_last_ready_ms_mean"]["mean"]
+    ax.plot([points[0][1], points[-1][1]], [0, 0],
+            color=COLORS["gray"], linewidth=2)
+    ax.text((points[1][1] + points[2][1]) / 2, -0.09,
+            f"exposed tail = {tail:.3f} ms", ha="center",
+            color=COLORS["green"], fontsize=9, fontweight="bold")
+    ax.set_xlim(245, 445); ax.set_ylim(-0.16, 0.28)
+    ax.set_yticks([]); ax.set_xlabel("8-GPU step timeline (ms)")
+    ax.set_title("(b) 16.43 MB gradients in two buckets")
+    ax.grid(axis="x", alpha=0.22)
+
+    ax = axes[2]
+    rounds = [0, 1, 4, 16, 64]
+    for world, color in ((4, COLORS["green"]), (8, COLORS["red"])):
+        values = [
+            summary["communication_round_pressure"][f"w{world}_r{repeat}"][
+                "mean"]
+            for repeat in rounds
+        ]
+        baseline = values[0]
+        ax.plot(rounds, [value - baseline for value in values], "o-",
+                color=color, linewidth=2, label=f"{world} GPUs")
+    ax.axhline(0, color=COLORS["gray"], linestyle="--", linewidth=1)
+    ax.set_xlabel("extra serialized 16 MiB all-reduces / step")
+    ax.set_ylabel("step penalty vs 0 rounds (ms)")
+    ax.set_title("(c) NCCL becomes visible only under stress")
+    ax.grid(alpha=0.22); ax.legend(frameon=False)
+    fig.suptitle("Current DDP bottleneck is not NCCL communication",
+                 fontsize=14, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    save(fig, output_dir, "ddp_bottleneck_evidence")
+
+    # Physical-card, rank-mapping, and load-partition evidence.
+    fig, axes = plt.subplots(2, 2, figsize=(13.8, 9.0))
+    ax = axes[0, 0]
+    cards = list(range(8))
+    gpu_times = [
+        summary["per_gpu"][f"gpu{card}"]["mean"] for card in cards
+    ]
+    bars = ax.bar(cards, gpu_times,
+                  color=[COLORS["red"] if card == 7 else COLORS["blue"]
+                         for card in cards], alpha=0.85)
+    ax.bar_label(bars, fmt="%.1f", fontsize=8, padding=2)
+    ax.set_ylim(min(gpu_times) - 1, max(gpu_times) + 1.5)
+    ax.set_xticks(cards); ax.set_xlabel("physical GPU")
+    ax.set_ylabel("single-GPU step time (ms)")
+    ax.set_title("(a) GPU 7 is consistently the slowest card")
+    ax.grid(axis="y", alpha=0.2)
+
+    ax = axes[0, 1]
+    mapping_specs = [
+        ("normal+affinity", sorted(bottleneck_dir.glob(
+            "rankdiag_normal_rank_t*.json")), "o-", COLORS["blue"]),
+        ("reversed", sorted(bottleneck_dir.glob(
+            "rankdiag_reverse_none_t*.json")), "s--", COLORS["orange"]),
+    ]
+    for label, paths, style, color in mapping_specs:
+        samples = {card: [] for card in cards}
+        for path in paths:
+            data = load_json(path)
+            visible = [
+                int(value) for value in
+                data["config"]["cuda_visible_devices"].split(",")
+            ]
+            ready = data["timed_communication_by_rank"]
+            median = float(np.median([
+                row["first_bucket_ready_ms_mean"] for row in ready
+            ]))
+            for rank, row in enumerate(ready):
+                samples[visible[rank]].append(
+                    row["first_bucket_ready_ms_mean"] - median)
+        values = [float(np.mean(samples[card])) for card in cards]
+        ax.plot(cards, values, style, color=color, linewidth=2, label=label)
+    ax.axhline(0, color=COLORS["gray"], linestyle=":", linewidth=1)
+    ax.set_xticks(cards); ax.set_xlabel("physical GPU after remapping")
+    ax.set_ylabel("first-gradient delay vs run median (ms)")
+    ax.set_title("(b) Delay follows physical GPU 7, not rank id")
+    ax.grid(alpha=0.22); ax.legend(frameon=False)
+
+    ax = axes[1, 0]
+    cost_keys = ["none_20ms", "balanced_20ms", "skewed_20ms"]
+    cost_labels = ["no extra cost", "cost-balanced", "all cost on rank 0"]
+    cost_values = [
+        summary["cost_partition"][key]["mean"] for key in cost_keys
+    ]
+    bars = ax.bar(cost_labels, cost_values,
+                  color=[COLORS["gray"], COLORS["green"], COLORS["red"]],
+                  alpha=0.85)
+    ax.bar_label(bars, fmt="%.1f ms", fontsize=8, padding=2)
+    ax.set_ylabel("DDP-4 critical step time (ms)")
+    ax.set_title("(c) Equal-total-cost partition recovers idle time")
+    ax.tick_params(axis="x", rotation=10); ax.grid(axis="y", alpha=0.2)
+
+    ax = axes[1, 1]
+    worker_rows = [
+        ("1 worker", summary["real_data_workers"]["workers1_none"],
+         COLORS["blue"]),
+        ("4 default", summary["real_data_sampler"]["distributed_workers4"],
+         COLORS["red"]),
+        ("4 + core\nisolation",
+         summary["real_data_workers"]["workers4_isolated"], COLORS["orange"]),
+        ("4 + controlled\ntask balance",
+         summary["real_data_sampler"]["taskbalanced_workers4"],
+         COLORS["green"]),
+        ("8 workers", summary["real_data_workers"]["workers8_none"],
+         COLORS["cyan"]),
+    ]
+    worker_labels = [row[0] for row in worker_rows]
+    worker_values = [row[1]["mean"] for row in worker_rows]
+    worker_errors = [row[1]["std"] for row in worker_rows]
+    bars = ax.bar(worker_labels, worker_values, yerr=worker_errors, capsize=4,
+                  color=[row[2] for row in worker_rows], alpha=0.85)
+    ax.bar_label(bars, fmt="%.1f", fontsize=8, padding=2)
+    ax.set_ylabel("real-data critical step time (ms)")
+    ax.set_title("(d) Task balance alone is neutral on fixed-shape data")
+    ax.grid(axis="y", alpha=0.2)
+    fig.suptitle("Straggler diagnosis and controlled mitigation",
+                 fontsize=14, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    save(fig, output_dir, "ddp_straggler_diagnosis")
+
+
 if __name__ == "__main__":
     args = parse_args()
     plt.rcParams.update({"font.family": "DejaVu Sans", "axes.unicode_minus": False})
@@ -487,3 +653,4 @@ if __name__ == "__main__":
     ddp_overlap(args.output_dir)
     rank_balance(args.output_dir)
     data_plots(args.data_dir, args.output_dir)
+    bottleneck_plots(args.data_dir, args.output_dir)

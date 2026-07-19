@@ -1,0 +1,458 @@
+{
+  "schema": "ddp-real-data-bottleneck-v1",
+  "torch_version": "2.9.0+cu128",
+  "gpu": "NVIDIA H800",
+  "world_size": 4,
+  "config": {
+    "configs": [
+      "/ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper/configs/gfp_pc.json",
+      "/ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper/configs/irvis_msrs.json",
+      "/ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper/configs/medical_harvard.json"
+    ],
+    "checkpoint": "/ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper/models/Ours_v3_frozen/model_26.pth",
+    "bs_per_gpu": 10,
+    "patch": 170,
+    "workers": 4,
+    "combine": "grouped",
+    "cap_factor": 1.25,
+    "attn": "sdpa",
+    "compile": true,
+    "bucket_cap_mb": 8.0,
+    "gradient_as_bucket_view": true,
+    "static_graph": true,
+    "find_unused_parameters": false,
+    "fused_adam": true,
+    "comm_mode": "noop",
+    "cpu_affinity": "isolated",
+    "cuda_visible_devices": "0,1,2,3",
+    "seed": 20260719,
+    "learning_rate": 0.0
+  },
+  "measurement": {
+    "warmup_steps": 12,
+    "steps": 50,
+    "critical_iteration_ms": [
+      421.4375200099312,
+      421.86768003739417,
+      421.6034929850139,
+      422.3008849658072,
+      422.16939700301737,
+      422.13307303609326,
+      421.60402494482696,
+      421.7228759662248,
+      422.9498750064522,
+      424.24257297534496,
+      422.24305600393564,
+      421.9458249863237,
+      422.10855102166533,
+      421.7242620070465,
+      421.6848050127737,
+      422.2979249898344,
+      421.93841899279505,
+      3826.4713529497385,
+      424.3750110035762,
+      422.721098002512,
+      422.6133660413325,
+      422.45810700114816,
+      422.22352902172133,
+      422.4298039916903,
+      421.7501759994775,
+      421.85610701562837,
+      422.71742899902165,
+      422.10458498448133,
+      422.28604800766334,
+      422.3330059903674,
+      422.37994400784373,
+      422.6142810075544,
+      421.96245898958296,
+      421.9768189941533,
+      422.0761319738813,
+      422.5930660031736,
+      422.2289199824445,
+      422.190715034958,
+      422.139116039034,
+      421.75554402638227,
+      422.5575299933553,
+      422.4122010054998,
+      422.28495003655553,
+      423.0682990164496,
+      425.5370859755203,
+      423.0988679919392,
+      422.0772669650614,
+      421.7646680190228,
+      421.73942900262773,
+      423.65822597639635
+    ],
+    "critical_iteration_ms_mean": 490.4485875798855,
+    "critical_iteration_ms_p95": 424.31541389087215,
+    "global_samples_per_second": 81.55798795828869,
+    "rank_gap_ms_mean": 51.46110478322953,
+    "last_loss": 1.0046841173124554
+  },
+  "stage_by_rank": [
+    {
+      "rank": 0,
+      "data_wait_ms_mean": 0.20496809971518815,
+      "data_wait_ms_p95": 0.23539405083283782,
+      "h2d_ms_mean": 0.12507726321928203,
+      "model_step_ms_mean": 490.00636387849227,
+      "iteration_ms_mean": 490.3373896609992,
+      "task_counts": [
+        190,
+        167,
+        143
+      ]
+    },
+    {
+      "rank": 1,
+      "data_wait_ms_mean": 0.2046131168026477,
+      "data_wait_ms_p95": 0.24044229940045625,
+      "h2d_ms_mean": 0.12418714119121432,
+      "model_step_ms_mean": 421.4782568567898,
+      "iteration_ms_mean": 421.8080104351975,
+      "task_counts": [
+        180,
+        159,
+        161
+      ]
+    },
+    {
+      "rank": 2,
+      "data_wait_ms_mean": 0.20716338185593486,
+      "data_wait_ms_p95": 0.2412178204394877,
+      "h2d_ms_mean": 0.12152351788245142,
+      "model_step_ms_mean": 421.60892023704946,
+      "iteration_ms_mean": 421.93904077634215,
+      "task_counts": [
+        189,
+        154,
+        157
+      ]
+    },
+    {
+      "rank": 3,
+      "data_wait_ms_mean": 0.2039939956739545,
+      "data_wait_ms_p95": 0.24770917370915407,
+      "h2d_ms_mean": 0.12340569985099137,
+      "model_step_ms_mean": 421.5373646398075,
+      "iteration_ms_mean": 421.86549031408504,
+      "task_counts": [
+        170,
+        163,
+        167
+      ]
+    }
+  ],
+  "affinity_by_rank": [
+    {
+      "local_rank": 0,
+      "physical_gpu": 0,
+      "numa_node": 0,
+      "cpu_count": 6,
+      "cpus": [
+        0,
+        1,
+        2,
+        112,
+        113,
+        114
+      ],
+      "trainer_cpus": [
+        0,
+        1,
+        2,
+        112,
+        113,
+        114
+      ],
+      "worker_cpu_sets": [
+        [
+          3,
+          7,
+          11,
+          115,
+          119,
+          123
+        ],
+        [
+          4,
+          8,
+          12,
+          116,
+          120,
+          124
+        ],
+        [
+          5,
+          9,
+          13,
+          117,
+          121,
+          125
+        ],
+        [
+          6,
+          10,
+          118,
+          122
+        ]
+      ]
+    },
+    {
+      "local_rank": 1,
+      "physical_gpu": 1,
+      "numa_node": 0,
+      "cpu_count": 6,
+      "cpus": [
+        14,
+        15,
+        16,
+        126,
+        127,
+        128
+      ],
+      "trainer_cpus": [
+        14,
+        15,
+        16,
+        126,
+        127,
+        128
+      ],
+      "worker_cpu_sets": [
+        [
+          17,
+          21,
+          25,
+          129,
+          133,
+          137
+        ],
+        [
+          18,
+          22,
+          26,
+          130,
+          134,
+          138
+        ],
+        [
+          19,
+          23,
+          27,
+          131,
+          135,
+          139
+        ],
+        [
+          20,
+          24,
+          132,
+          136
+        ]
+      ]
+    },
+    {
+      "local_rank": 2,
+      "physical_gpu": 2,
+      "numa_node": 0,
+      "cpu_count": 6,
+      "cpus": [
+        28,
+        29,
+        30,
+        140,
+        141,
+        142
+      ],
+      "trainer_cpus": [
+        28,
+        29,
+        30,
+        140,
+        141,
+        142
+      ],
+      "worker_cpu_sets": [
+        [
+          31,
+          35,
+          39,
+          143,
+          147,
+          151
+        ],
+        [
+          32,
+          36,
+          40,
+          144,
+          148,
+          152
+        ],
+        [
+          33,
+          37,
+          41,
+          145,
+          149,
+          153
+        ],
+        [
+          34,
+          38,
+          146,
+          150
+        ]
+      ]
+    },
+    {
+      "local_rank": 3,
+      "physical_gpu": 3,
+      "numa_node": 0,
+      "cpu_count": 6,
+      "cpus": [
+        42,
+        43,
+        44,
+        154,
+        155,
+        156
+      ],
+      "trainer_cpus": [
+        42,
+        43,
+        44,
+        154,
+        155,
+        156
+      ],
+      "worker_cpu_sets": [
+        [
+          45,
+          49,
+          53,
+          157,
+          161,
+          165
+        ],
+        [
+          46,
+          50,
+          54,
+          158,
+          162,
+          166
+        ],
+        [
+          47,
+          51,
+          55,
+          159,
+          163,
+          167
+        ],
+        [
+          48,
+          52,
+          160,
+          164
+        ]
+      ]
+    }
+  ],
+  "timed_communication_by_rank": [
+    {
+      "rank": 0,
+      "steps_observed": 0,
+      "bytes_per_step_mean": 0.0,
+      "bucket_count_mean": 0.0,
+      "first_ready_ms_mean": 0.0,
+      "last_ready_ms_mean": 0.0,
+      "all_complete_ms_mean": 0.0,
+      "comm_tail_after_last_ready_ms_mean": 0.0
+    },
+    {
+      "rank": 1,
+      "steps_observed": 0,
+      "bytes_per_step_mean": 0.0,
+      "bucket_count_mean": 0.0,
+      "first_ready_ms_mean": 0.0,
+      "last_ready_ms_mean": 0.0,
+      "all_complete_ms_mean": 0.0,
+      "comm_tail_after_last_ready_ms_mean": 0.0
+    },
+    {
+      "rank": 2,
+      "steps_observed": 0,
+      "bytes_per_step_mean": 0.0,
+      "bucket_count_mean": 0.0,
+      "first_ready_ms_mean": 0.0,
+      "last_ready_ms_mean": 0.0,
+      "all_complete_ms_mean": 0.0,
+      "comm_tail_after_last_ready_ms_mean": 0.0
+    },
+    {
+      "rank": 3,
+      "steps_observed": 0,
+      "bytes_per_step_mean": 0.0,
+      "bucket_count_mean": 0.0,
+      "first_ready_ms_mean": 0.0,
+      "last_ready_ms_mean": 0.0,
+      "all_complete_ms_mean": 0.0,
+      "comm_tail_after_last_ready_ms_mean": 0.0
+    }
+  ],
+  "ddp_logging": {
+    "backend_name": "nccl",
+    "bucket_sizes": "16434656",
+    "comm_hook": "main.<locals>.noop_hook",
+    "cuda_visible_devices": "0,1,2,3",
+    "device_ids": "0",
+    "dtypes": "float",
+    "master_addr": "aiplatform-wlf3-ge98-285.idchb2az3.hb2.kwaidc.com",
+    "master_port": "37589",
+    "module_name": "OptimizedModule",
+    "nccl_async_error_handling": "1",
+    "nccl_blocking_wait": "N/A",
+    "nccl_debug": "N/A",
+    "nccl_ib_timeout": "N/A",
+    "nccl_nthreads": "N/A",
+    "nccl_socket_ifname": "N/A",
+    "prev_iteration_grad_ready_order_indices": "26, 27, 231, 235, 251, 236, 253, 249, 278, 274, 270, 266, 262, 258, 254, 250, 246, 242, 238, 234, 277, 273, 269, 265, 261, 232, 245, 241, 237, 233, 276, 272, 268, 264, 260, 256, 252, 248, 244, 257, 247, 275, 271, 267, 263, 259, 240, 239, 243, 255, 227, 228, 279, 230, 229, 218, 219, 223, 226, 225, 220, 221, 224, 222, 169, 173, 189, 174, 191, 187, 216, 212, 208, 204, 200, 196, 192, 188, 184, 180, 176, 172, 215, 211, 207, 203, 199, 170, 183, 179, 175, 171, 214, 210, 206, 202, 198, 194, 190, 186, 182, 195, 185, 213, 209, 205, 201, 197, 178, 177, 181, 193, 165, 166, 217, 168, 167, 156, 157, 161, 164, 163, 158, 159, 162, 160, 107, 111, 127, 112, 129, 125, 154, 150, 146, 142, 138, 134, 130, 126, 122, 118, 114, 110, 153, 149, 145, 141, 137, 108, 121, 117, 113, 109, 152, 148, 144, 140, 136, 132, 128, 124, 120, 133, 123, 151, 147, 143, 139, 135, 116, 115, 119, 131, 103, 104, 155, 106, 105, 94, 95, 99, 102, 101, 96, 97, 100, 98, 45, 49, 65, 50, 67, 63, 92, 88, 84, 80, 76, 72, 68, 64, 60, 56, 52, 48, 91, 87, 83, 79, 75, 46, 59, 55, 51, 47, 90, 86, 82, 78, 74, 70, 66, 62, 58, 71, 61, 89, 85, 81, 77, 73, 54, 53, 57, 69, 41, 42, 93, 43, 44, 32, 36, 34, 40, 39, 38, 33, 35, 37, 13, 16, 22, 24, 25, 23, 21, 20, 19, 18, 14, 15, 17, 29, 28, 0, 2, 5, 12, 11, 10, 8, 7, 4, 6, 9, 1, 3",
+    "rebuilt_bucket_sizes": "8485448, 7949208",
+    "rebuilt_per_bucket_param_indices": "26 27 231 235 251 236 253 249 278 274 270 266 262 258 254 250 246 242 238 234 277 273 269 265 261 232 245 241 237 233 276 272 268 264 260 256 252 248 244 257 247 275 271 267 263 259 240 239 243 255 227 228 279 230 229 218 219 223 226 225 220 221 224 222 169 173 189 174 191 187 216 212 208 204 200 196 192 188 184 180 176 172 215 211 207 203 199 170 183 179 175 171 214 210 206 202 198 194 190 186 182 195 185 213 209 205 201 197 178 177 181 193 165 166 217 168 167 156 157 161 164 163 158 159 162 160 107 111 127, 112 129 125 154 150 146 142 138 134 130 126 122 118 114 110 153 149 145 141 137 108 121 117 113 109 152 148 144 140 136 132 128 124 120 133 123 151 147 143 139 135 116 115 119 131 103 104 155 106 105 94 95 99 102 101 96 97 100 98 45 49 65 50 67 63 92 88 84 80 76 72 68 64 60 56 52 48 91 87 83 79 75 46 59 55 51 47 90 86 82 78 74 70 66 62 58 71 61 89 85 81 77 73 54 53 57 69 41 42 93 43 44 32 36 34 40 39 38 33 35 37 13 16 22 24 25 23 21 20 19 18 14 15 17 29 28 0 2 5 12 11 10 8 7 4 6 9 1 3 30 31",
+    "torch_distributed_debug": "N/A",
+    "avg_backward_comm_time": 35160667,
+    "avg_backward_compute_comm_overlap_time": 28513137,
+    "avg_backward_compute_time": 316430091,
+    "avg_forward_compute_time": 572439454,
+    "backward_comm_time": 35614944,
+    "backward_comm_time_end": 1784462444599819533,
+    "backward_comm_time_start": 1784462444530166410,
+    "backward_compute_comm_overlap_time": 35611680,
+    "backward_compute_time": 275094016,
+    "backward_compute_time_end": 1784462444599105898,
+    "backward_compute_time_start": 1784462444412579923,
+    "broadcast_buffers": 1,
+    "bucket_cap_bytes": 8388608,
+    "find_unused_parameters": 0,
+    "forward_compute_time": 146020480,
+    "forward_compute_time_start": 1784462444268282602,
+    "gradient_as_bucket_view": 1,
+    "has_rebuilt_buckets": 1,
+    "has_sync_bn": 0,
+    "is_multi_device_module": 0,
+    "iteration": 10,
+    "num_buckets_reduced": 2,
+    "num_parameter_tensors": 280,
+    "output_device": 0,
+    "rank": 0,
+    "static_graph": 1,
+    "total_parameter_size_bytes": 16434656,
+    "unused_parameter_size": 768,
+    "world_size": 4
+  },
+  "metadata_backfill": "verified from recorded 2026-07-19 run command",
+  "protocol_revision": 2
+}

@@ -3,7 +3,7 @@
 > 本文件是毕业论文「实验」章节的**框架稿**：给出章节骨架、各小节应写的内容与写作要点、已就绪的核心数据表与图目占位。
 > 结构对标已中稿会议论文 `paper/initial_paper.tex` 的 `\section{Experiments and discussion}`（Setup → 与 SOTA 对比[主观/客观] → 消融），并按毕业论文体量扩展为「统一多模态融合 + MoE + 分布式」的完整实验章。
 > 最优方法记为 **Ours（v3）= U-MoE-Fusion**：`models/Ours_v3_frozen`，oc96-depth4、真实窗口注意力(ws8)、决策图融合头(blend)、1 共享 + 12 路由专家 top-2 稀疏 MoE-FFN、maxfuse 任务自适应损失，约 4.11M 参数。
-> 数据来源（一手素材，勿在正文重复摘录路径）：`../MASTER_PLAN.md`、`../EVALUATION-metrics.md`、`../DATASETS_AND_PREPROCESSING.md`、`../SUMMARY-comparison-18methods.md`、`../EXP-CMP-OURS-vs-18methods.md`、`../EXP-CMP-OURS-v3-bigmodel-staged.md`、`../EXP-ABLATION-01-v3-innovations.md`、`../EXP-ABLATION-PARAM-v3.md`、`../EXP-INFRA-01/02`。
+> 数据来源（一手素材，勿在正文重复摘录路径）：`../MASTER_PLAN.md`、`../EVALUATION-metrics.md`、`../DATASETS_AND_PREPROCESSING.md`、`../SUMMARY-comparison-18methods.md`、`../EXP-CMP-OURS-vs-18methods.md`、`../EXP-CMP-OURS-v3-bigmodel-staged.md`、`../EXP-ABLATION-01-v3-innovations.md`、`../EXP-ABLATION-PARAM-v3.md`、`../EXP-INFRA-01/02/03`。
 >
 > 图/表占位约定：`【图 4-x】`、`【表 4-x】`。待补素材以 `TODO:` 标注。
 
@@ -206,9 +206,10 @@
   - **稠密 batched-MoE 反例**：此 token 量（~29 万/前向）下 OOM ❌；稀疏 + compile 更实际。
   - **DDP-4 数据并行 + compile（历史端到端）**：epoch 594s→**197s（≈3.0×）** ✅；该口径混有 DataLoader/编译等开销，不能直接视为纯通信效率。
   - **续作（INFRA-02/03）**：SDPA 省约 7.5GB；**容量受限分组 MoE**把 E 个小 linear 收敛为 2 次批量 GEMM，和 compile 联合达到 1.29×；E=12→32 的单步降幅由 9.2% 扩大到 36.2%；α=1.25 的冻结探针丢弃 0.80%、输出 MAE 3.67e-5。
-  - **分布式复核（INFRA-03）**：8 MiB 两桶 + bucket-view + fused Adam + static graph；1→8 卡扩展效率 **99.08%**，通信模式差异低于步内噪声；单 rank 2/5/10ms 停顿几乎 1:1 传导为全局损失。
-- AI-infra 洞见（可直接写入论文）：① profile 决定取舍；② bf16 非万灵药；③ grouped 的收益来自“规则执行形状×compile”，并随专家数增长；④ 当前 4M 模型不是 NCCL 受限，分布式首要风险是输入/计算 straggler，FSDP/EP 暂不匹配。
-  - 【表 4-15~4-25 + 原理/证据图】`已就绪于 content/section-efficiency.md 与 INFRA-03`。
+  - **分布式复核（INFRA-03）**：8 MiB 两桶 + bucket-view + fused Adam + static graph；1→8 卡扩展效率 **99.08%**；CUDA Event 末桶完成上界为 4 卡 **0.91 ms**、8 卡 **6.41 ms**，default−noop 的独立试验 95% CI 跨 0；物理 GPU7 与真实 DataLoader 均检测到慢 rank。
+  - **输入侧受控负结果**：在每步全局样本集合完全相同的前提下，任务均衡虽显著缩小 rank 间任务计数跨度，但步时为 496.84 vs 496.43 ms（+0.08%），不应并入正式训练；只有人工成本异构实验支持成本感知分配。
+- AI-infra 洞见（可直接写入论文）：① profile 决定取舍；② bf16 非万灵药；③ grouped 的收益来自“规则执行形状×compile”，并随专家数增长；④ 当前 4M 模型不是 NCCL 受限，分布式首要风险是物理慢卡与输入任务成本 straggler，FSDP/EP 暂不匹配。
+  - 【表 4-15~4-31 + 原理/证据图】`已就绪于 content/section-efficiency.md 与 INFRA-03`。
 
 ---
 

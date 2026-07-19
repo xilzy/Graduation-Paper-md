@@ -25,6 +25,7 @@ Materials/
 │   └── <param>/  (individual/ + fig_<param>_<task>[_<subtag>].png)  # 每超参 1 张，代表模态
 └── efficiency/          §4.5 训练效率与分布式优化
     ├── data/            # 单卡、容量质量、NCCL、DDP 原始 JSON
+    │   └── bottleneck/  # 通信分解、物理卡、真实 DataLoader 与采样实验
     └── figures/         # 原理图与数据证据图（SVG + PNG）
 ```
 
@@ -32,7 +33,7 @@ Materials/
 
 ## 训练效率图（efficiency/）
 
-由 `script/make_efficiency_figures.py` 从 `efficiency/data/*.json` 生成。原理图包括 compile 融合、SDPA、分组容量 MoE、容量—负载均衡、DDP 分桶重叠与 rank 成本均衡；证据图包括 grouped×compile 交互、专家数扩展、容量 Pareto、NCCL 桶曲线、DDP 桶扫描及 1/2/4/8 卡扩展/straggler。对应实验解释见 `EXP-INFRA-03-grouped-moe-ddp-evidence.md`。
+由 `script/make_efficiency_figures.py` 从 `efficiency/data/` 生成。原理图包括 compile 融合、SDPA、分组容量 MoE、容量—负载均衡、DDP 分桶重叠与 rank 成本均衡；证据图包括 grouped×compile 交互、专家数扩展、容量 Pareto、NCCL 桶曲线、DDP 桶扫描、1/2/4/8 卡扩展，以及桶级通信分解、物理慢卡与同样本任务均衡受控对照。对应实验解释见 `EXP-INFRA-03-grouped-moe-ddp-evidence.md`。
 
 ```bash
 cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md

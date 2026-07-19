@@ -4,7 +4,7 @@
 
 ## 目录
 
-- `data/`：每次实验的原始 JSON；成功记录包含环境、完整配置、逐次/逐步计时和统计量，失败记录使用 `experiment-failure-v1` schema。
+- `data/`：核心实验 JSON；`data/bottleneck/` 保存通信分解、快慢卡、真实 DataLoader 和任务均衡实验。
 - `figures/`：`script/make_efficiency_figures.py` 从 JSON 生成的 SVG/PNG；SVG 用于论文排版，PNG 用于 Markdown 预览。
 
 ## 数据分组
@@ -23,11 +23,17 @@
 | `ddp_final_bucket8*`、`ddp_comm_*` | default/sync/noop 通信对照 |
 | `ddp_scale_*` | 1/2/4/8 卡扩展 |
 | `ddp_straggler_*` | 单 rank 输入停顿敏感性 |
+| `bottleneck/comm_*` | 4/8 卡 default/noop/sync/timed 三次独立重复 |
+| `bottleneck/batch_*`、`pressure_*`、`rounds_*` | 计算强度边界与额外通信压力 |
+| `bottleneck/rankdiag_*`、`gpu_card_*` | GPU 映射反转、NUMA 绑核与逐物理卡速度 |
+| `bottleneck/real_*`、`real_workers*`、`real_sampler_*` | 真实数据阶段计时、worker 与同样本任务均衡对照 |
+| `bottleneck_summary.json` | `summarize_bottleneck_evidence.py` 生成的独立试验汇总与 95% CI |
 
 ## 重新出图
 
 ```bash
 cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
+/opt/conda/envs/py310/bin/python3 script/summarize_bottleneck_evidence.py
 /opt/conda/envs/py310/bin/python3 script/make_efficiency_figures.py
 ```
 

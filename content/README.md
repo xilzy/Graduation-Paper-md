@@ -11,10 +11,10 @@
 | `section-comparison.md` | §4.2 与主流方法的对比实验 | 定稿（9 方法含 EMMA'24/GIFNet'25 + 5 指标，Ours 三模态全指标第一）|
 | `section-ablation.md` | §4.3 消融实验（仅创新点） | 定稿（5 创新点逐一消融 + 主客观分析；超参不在此）|
 | `section-hyperparam.md` | §4.4 超参数分析 | 定稿（8 超参×三模态 5 指标全表 + 每超参 1 张定性图（各用不同样本，与 §4.2/§4.3 去重）+ 详尽客观/主观分析；判优直接读表读图；数据源 EXP-ABLATION-PARAM-v3）|
-| `section-efficiency.md` | §4.5 训练效率与分布式优化 | 定稿（compile/SDPA/grouped 原理图 + 专家数/容量/冻结质量多维证据 + NCCL/分桶/运行时消融 + 1/2/4/8 卡扩展与 straggler；表 4-15~4-25；数据源 EXP-INFRA-01/02/03）|
+| `section-efficiency.md` | §4.5 训练效率与分布式优化 | 定稿（compile/SDPA/grouped 多维证据 + CUDA Event 桶时间线/压力实验 + 物理慢卡 + 真实 DataLoader 与同样本任务均衡受控对照；表 4-15~4-31；数据源 EXP-INFRA-01/02/03）|
 | `chapter-summary.md` | §4.6 讨论、局限与本章小结 | 待撰写（综合全章：达成 / 诚实局限 / 未来工作，写作要点见 chapter-experiments.md §4.5）|
 
-> 全局编号：正文表号连续至表 4-25（§4.5 为表 4-15~4-25）；§4.5 新增 compile、SDPA、grouped-capacity、容量均衡、DDP overlap/rank balance 及证据曲线，最终排版时需在 §4.4 图 4-16 后顺延图号。
+> 全局编号：正文表号连续至表 4-31（§4.5 为表 4-15~4-31）；§4.5 新增 compile、SDPA、grouped-capacity、桶级通信分解、物理慢卡、DDP overlap/rank balance 及任务均衡正/负证据，最终排版时需在 §4.4 图 4-16 后顺延图号。
 > 后续章节（绪论 / 相关工作 / 方法 / 结论 等）的 Markdown 文本内容陆续加入本目录。
 
 ## 说明
