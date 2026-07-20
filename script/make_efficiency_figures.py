@@ -154,19 +154,24 @@ def grouped_pipeline(output_dir: Path):
     rounded_box(ax, (0.3, 7.8), 2.0, 1.0, "T tokens\n[T, C]", COLORS["blue"])
     rounded_box(ax, (3.0, 7.8), 2.2, 1.0, "Top-k router\n(T × k pairs)", COLORS["purple"])
     arrow(ax, (2.3, 8.3), (3.0, 8.3))
+    ax.plot([4.1, 4.1, 2.65, 2.65], [7.8, 7.55, 7.55, 3.0],
+            color=COLORS["gray"], linewidth=1.4)
     for i, n in enumerate(("n1", "n2", "...", "nE")):
         y = 6.5 - i * 1.25
         rounded_box(ax, (3.1, y), 1.9, 0.78, f"expert {i+1}\n[{n}, C]",
                     COLORS["orange"], fontsize=8)
         rounded_box(ax, (6.1, y), 2.6, 0.78, "FC1 → GELU → FC2",
                     COLORS["red"], fontsize=8)
+        arrow(ax, (2.65, y + 0.39), (3.1, y + 0.39))
         arrow(ax, (5.0, y + 0.39), (6.1, y + 0.39))
-        arrow(ax, (4.1, 7.8), (4.1, y + 0.78), connectionstyle="arc3,rad=0.08")
     rounded_box(ax, (3.8, 0.55), 3.8, 0.9, "E × nonzero / index / index_add",
                 COLORS["red"], fontsize=9)
+    ax.plot([9.25, 9.25], [6.89, 1.0],
+            color=COLORS["gray"], linewidth=1.4)
     for i in range(4):
         y = 6.5 - i * 1.25
-        arrow(ax, (8.7, y + 0.39), (6.8, 1.45), connectionstyle="arc3,rad=-0.08")
+        arrow(ax, (8.7, y + 0.39), (9.25, y + 0.39))
+    arrow(ax, (9.25, 1.0), (7.6, 1.0))
     ax.text(5.0, 9.25, "Sparse FLOPs, but variable shapes + many small GEMMs",
             ha="center", color=COLORS["red"], fontsize=10)
 
@@ -186,7 +191,9 @@ def grouped_pipeline(output_dir: Path):
     rounded_box(ax, (5.4, 5.6), 3.6, 1.25,
                 "2 batched GEMMs\n[E, cap, C] → [E, cap, C]",
                 COLORS["green"], fontsize=10)
-    arrow(ax, (8.25, 7.8), (4.6, 6.25), connectionstyle="arc3,rad=0.08")
+    ax.plot([8.25, 8.25, 0.75, 0.75], [7.8, 7.55, 7.55, 6.25],
+            color=COLORS["gray"], linewidth=1.4)
+    arrow(ax, (0.75, 6.25), (1.0, 6.25))
     arrow(ax, (4.6, 6.25), (5.4, 6.25))
     rounded_box(ax, (2.8, 2.9), 4.4, 1.05,
                 "gate-weighted gather → index_add scatter",
@@ -209,7 +216,7 @@ def grouped_pipeline(output_dir: Path):
 
 
 def capacity_balance(output_dir: Path):
-    fig, axes = plt.subplots(1, 3, figsize=(14.5, 4.7), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(14.5, 5.2), sharey=True)
     loads = np.array([1.62, 1.43, 1.23, 1.08, 0.98, 0.88, 0.79, 0.72])
     specs = [
         (loads, 1.25, "Unbalanced router, α=1.25\nfast, but overflow"),
@@ -239,13 +246,14 @@ def capacity_balance(output_dir: Path):
         ax.grid(axis="y", alpha=0.2)
     axes[0].set_ylabel("load / mean expert load")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False)
+    fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.5, 0.065),
+               ncol=3, frameon=False)
     fig.suptitle("Capacity factor and load balancing are a coupled supply–demand mechanism",
                  fontsize=14, fontweight="bold")
-    fig.text(0.5, 0.01,
+    fig.text(0.5, 0.018,
              "lower α: less padded compute but more token drops   |   higher α: safer quality but larger buffers",
              ha="center", fontsize=10, color=COLORS["dark"])
-    fig.tight_layout(rect=(0, 0.09, 1, 0.92))
+    fig.tight_layout(rect=(0, 0.17, 1, 0.92))
     save(fig, output_dir, "capacity_balance_principle")
 
 
@@ -602,7 +610,7 @@ def bottleneck_plots(data_dir: Path, output_dir: Path):
 
     ax = axes[1, 0]
     cost_keys = ["none_20ms", "balanced_20ms", "skewed_20ms"]
-    cost_labels = ["no extra cost", "cost-balanced", "all cost on rank 0"]
+    cost_labels = ["no extra\ncost", "cost-balanced", "all cost on\nrank 0"]
     cost_values = [
         summary["cost_partition"][key]["mean"] for key in cost_keys
     ]
@@ -612,7 +620,7 @@ def bottleneck_plots(data_dir: Path, output_dir: Path):
     ax.bar_label(bars, fmt="%.1f ms", fontsize=8, padding=2)
     ax.set_ylabel("DDP-4 critical step time (ms)")
     ax.set_title("(c) Equal-total-cost partition recovers idle time")
-    ax.tick_params(axis="x", rotation=10); ax.grid(axis="y", alpha=0.2)
+    ax.tick_params(axis="x", rotation=0, pad=3); ax.grid(axis="y", alpha=0.2)
 
     ax = axes[1, 1]
     worker_rows = [
