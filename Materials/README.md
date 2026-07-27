@@ -10,7 +10,8 @@ Materials/
 │   ├── fig_u_moe_fusion_framework.*
 │   ├── fig_u_moe_ffn_detail.*
 │   ├── fig_u_moe_unified_preprocessing_detail.*
-│   └── fig_u_moe_window_attention_detail.*
+│   ├── fig_u_moe_window_attention_detail.*
+│   └── distributed_parallelism_comparison.*
 ├── comparison/          §4.2 与 SOTA 的定性对比图（本批已产出）
 │   ├── irvis/
 │   │   ├── individual/            # 12 张单图（带红框+左下角局部放大），供 PPT 自排
@@ -58,7 +59,7 @@ cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
 
 由 `script/make_efficiency_figures.py` 从 `efficiency/data/` 生成。原理图包括 compile 融合、SDPA、分组容量 MoE、容量—负载均衡、DDP 分桶重叠与 rank 成本均衡；证据图包括 grouped×compile 交互、专家数扩展、容量 Pareto、NCCL 桶曲线、DDP 桶扫描、1/2/4/8 卡扩展，以及桶级通信分解、物理慢卡与同样本任务均衡受控对照。对应实验解释见 `EXP-INFRA-03-grouped-moe-ddp-evidence.md`。
 
-`efficiency/figures/distributed_parallelism_comparison.{pdf,png}` 以统一的四卡示意比较 DDP、梯度归约重叠、Megatron Distributed Optimizer、ZeRO/FSDP、成本感知数据分片、TP、PP、EP、Ulysses Parallelism 和 Context Parallelism，分别标明切分对象、主要通信以及与当前 4.11 M 参数、激活主导模型的匹配结论。脚本为 `script/make_distributed_parallelism_figure.py`，完整映射见根目录 `FIGURE-05-Distributed-parallelism-comparison.md`。
+`figs/distributed_parallelism_comparison.{pdf,png}` 以统一的四卡示意比较 DDP、梯度归约重叠、Megatron Distributed Optimizer、ZeRO/FSDP、成本感知数据分片、TP、PP、EP、Ulysses Parallelism 和 Context Parallelism，分别标明切分对象、主要通信以及与当前 4.11 M 参数、激活主导模型的匹配结论。脚本为 `script/make_distributed_parallelism_figure.py`，完整映射见根目录 `FIGURE-05-Distributed-parallelism-comparison.md`。
 
 ```bash
 cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md

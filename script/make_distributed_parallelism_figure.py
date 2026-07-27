@@ -414,7 +414,7 @@ def draw_distributed_optimizer(ax, x, y, w, h):
     xs, gpu_w = four_gpu_centers(x, w)
     for index, gx in enumerate(xs):
         gpu(
-            ax, gx, y + 0.128, gpu_w, 0.112, f"GPU {index}",
+            ax, gx, y + 0.118, gpu_w, 0.100, f"GPU {index}",
             [("P full", C["model_light"], C["model"]),
              (f"G{index}", "#F8E1E7", C["grad"]),
              (f"O{index}", "#F7ECD4", C["optim"])],
@@ -425,9 +425,9 @@ def draw_distributed_optimizer(ax, x, y, w, h):
           color=C["rsag"], lw=1.0, ms=7)
     text(ax, (centers[0] + centers[-1]) / 2, y + 0.281,
          "Reduce-Scatter G", size=5.2, weight="bold", color=C["rsag"])
-    arrow(ax, (centers[-1], y + 0.252), (centers[0], y + 0.252),
+    arrow(ax, (centers[-1], y + 0.240), (centers[0], y + 0.240),
           color=C["state"], lw=1.0, ms=7)
-    text(ax, (centers[0] + centers[-1]) / 2, y + 0.241,
+    text(ax, (centers[0] + centers[-1]) / 2, y + 0.252,
          "All-Gather P", size=5.2, weight="bold", color=C["state"])
     notes(
         ax, x, y, w,
@@ -551,22 +551,30 @@ def draw_pp(ax, x, y, w, h):
     gap = (w - 0.028 - 4 * stage_w) / 3
     stage_xs = [left + i * (stage_w + gap) for i in range(4)]
     for index, sx in enumerate(stage_xs):
-        rounded(ax, sx, y + 0.225, stage_w, 0.052,
+        rounded(ax, sx, y + 0.205, stage_w, 0.052,
                 fc=C["pp_light"], ec=color, lw=0.85, radius=0.004, z=4)
-        text(ax, sx + stage_w / 2, y + 0.251, f"GPU {index}\nStage {index}",
+        text(ax, sx + stage_w / 2, y + 0.231, f"GPU {index}\nStage {index}",
              size=4.8, weight="bold", color=color)
         if index < 3:
-            arrow(ax, (sx + stage_w, y + 0.251),
-                  (stage_xs[index + 1], y + 0.251),
-                  color=C["p2p"], lw=0.9, ms=7)
+            arrow(
+                ax,
+                (sx + stage_w, y + 0.231),
+                (stage_xs[index + 1], y + 0.231),
+                color=C["p2p"],
+                lw=0.9,
+                ms=7,
+                shrink_a=4.0,
+                shrink_b=4.0,
+                z=3,
+            )
     mb_colors = [C["sample_a"], C["sample_b"], C["sample_c"]]
     for row, mb_color in enumerate(mb_colors):
-        yy = y + 0.137 + row * 0.026
+        yy = y + 0.130 + row * 0.022
         for stage in range(4):
             xx = stage_xs[stage] + row * 0.004
-            rounded(ax, xx, yy, stage_w - 0.004, 0.018,
+            rounded(ax, xx, yy, stage_w - 0.004, 0.016,
                     fc=mb_color + "33", ec=mb_color, lw=0.55, radius=0.002, z=4)
-            text(ax, xx + (stage_w - 0.004) / 2, yy + 0.009, f"m{row}",
+            text(ax, xx + (stage_w - 0.004) / 2, yy + 0.008, f"m{row}",
                  size=4.2, weight="bold", color=mb_color)
     text(ax, x + w / 2, y + 0.116, "P2P activations; micro-batch pipeline",
          size=5.2, weight="bold", color=C["p2p"])
@@ -585,27 +593,42 @@ def draw_ep(ax, x, y, w, h):
                color=color, light=light, verdict="NOT NOW", verdict_kind="skip")
     xs, box_w = four_gpu_centers(x, w)
     token_colors = [C["sample_a"], C["sample_b"], C["sample_c"], C["sample_d"]]
-    token_y = y + 0.235
-    expert_y = y + 0.120
+    token_y = y + 0.245
+    expert_y = y + 0.125
     for index, xx in enumerate(xs):
         rounded(ax, xx, token_y, box_w, 0.028, fc=token_colors[index] + "33",
                 ec=token_colors[index], lw=0.65, radius=0.003, z=5)
         text(ax, xx + box_w / 2, token_y + 0.014, f"T{index}",
              size=4.8, weight="bold", color=token_colors[index])
         gpu(
-            ax, xx, expert_y, box_w, 0.070, f"GPU {index}",
+            ax, xx, expert_y, box_w, 0.050, f"GPU {index}",
             [(f"E{index*3+1}-E{index*3+3}", C["ep_light"], color)],
             edge=color,
         )
-    rounded(ax, x + 0.043, y + 0.187, w - 0.086, 0.031,
+    rounded(ax, x + 0.020, y + 0.195, w - 0.040, 0.034,
             fc="#FAE8EC", ec=C["a2a"], lw=0.8, radius=0.004, z=5)
-    text(ax, x + w / 2, y + 0.2025, "All-to-All token dispatch", size=5.3,
+    text(ax, x + w / 2, y + 0.212, "All-to-All token dispatch", size=5.3,
          weight="bold", color=C["a2a"])
-    targets = [2, 0, 3, 1]
-    for index, target in enumerate(targets):
-        arrow(ax, (xs[index] + box_w / 2, token_y),
-              (xs[target] + box_w / 2, expert_y + 0.070),
-              color=token_colors[index], lw=0.7, ms=6, z=3)
+    for index, xx in enumerate(xs):
+        center = xx + box_w / 2
+        arrow(
+            ax,
+            (center, token_y),
+            (center, y + 0.229),
+            color=token_colors[index],
+            lw=0.7,
+            ms=6,
+            z=3,
+        )
+        arrow(
+            ax,
+            (center, y + 0.195),
+            (center, expert_y + 0.050),
+            color=token_colors[(index + 2) % 4],
+            lw=0.7,
+            ms=6,
+            z=3,
+        )
     notes(
         ax, x, y, w,
         "expert weights and routed tokens",
@@ -752,10 +775,28 @@ def summary_strip(ax):
              weight="bold", color=ec, ha="left")
         text(ax, xx + 0.010, box_y + 0.027, body, size=5.7,
              color=C["ink"], ha="left", linespacing=1.15)
-    arrow(ax, (0.304, box_y + box_h / 2), (0.360, box_y + box_h / 2),
-          color=C["adopt"], lw=1.1, ms=9)
-    arrow(ax, (0.670, box_y + box_h / 2), (0.726, box_y + box_h / 2),
-          color=C["skip"], lw=1.1, ms=9)
+    arrow(
+        ax,
+        (0.304, box_y + box_h / 2),
+        (0.360, box_y + box_h / 2),
+        color=C["adopt"],
+        lw=1.1,
+        ms=9,
+        shrink_a=5.0,
+        shrink_b=5.0,
+        z=2,
+    )
+    arrow(
+        ax,
+        (0.670, box_y + box_h / 2),
+        (0.726, box_y + box_h / 2),
+        color=C["skip"],
+        lw=1.1,
+        ms=9,
+        shrink_a=5.0,
+        shrink_b=5.0,
+        z=2,
+    )
 
 
 def build_figure(output_dir: Path, font_dir: Path) -> Path:
@@ -814,7 +855,7 @@ def parse_args():
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path(__file__).resolve().parents[1] / "Materials/efficiency/figures",
+        default=Path(__file__).resolve().parents[1] / "Materials/figs",
     )
     return parser.parse_args()
 

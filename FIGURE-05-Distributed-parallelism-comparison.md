@@ -2,8 +2,8 @@
 
 ## 1. 产物
 
-- `Materials/efficiency/figures/distributed_parallelism_comparison.pdf`：论文排版用矢量版本；
-- `Materials/efficiency/figures/distributed_parallelism_comparison.png`：高分辨率预览版本；
+- `Materials/figs/distributed_parallelism_comparison.pdf`：论文排版用矢量版本；
+- `Materials/figs/distributed_parallelism_comparison.png`：高分辨率预览版本；
 - `script/make_distributed_parallelism_figure.py`：可复现绘图脚本。
 
 该图以 `content/section-efficiency.md` 表 4-21 为基础，完整比较表中六类机制，并补充 Tensor Parallel、Pipeline Parallel、Ulysses Parallelism 和 Context Parallel，共十类分布式训练方法。
@@ -95,7 +95,7 @@ ZeRO 的不同 stage 或 FSDP 可进一步切分参数、梯度和优化器状�
 - 十种机制都用四个 GPU/rank 的统一尺度表示；
 - 数据、模型状态、Tensor、Pipeline、Expert、Ulysses 和 Context 使用不同颜色；
 - All-Reduce、Reduce-Scatter/All-Gather、All-to-All、P2P 和 Ring P2P 在底部提供完整图例；
-- 所有常规流程使用直线或正交线，只有 Expert Parallel 的交叉 token 路由刻意保留交叉关系；
+- 所有常规流程使用直线或正交线；Expert Parallel 的重分配关系收纳在中央 All-to-All 模块中，模块外只保留竖直端口连线；
 - 箭头端点在模块边界前退让，不穿过模块文字；
 - 全部英文使用 Times New Roman，仅输出 PDF 和 PNG。
 

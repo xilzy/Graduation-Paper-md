@@ -168,7 +168,7 @@ torch.compile 可以融合相邻 pointwise 算子并降低 Python/launch 开销�
 
 **结果分析。** 本文吸收大规模框架的“连续缓冲、异步分桶、静态图”思想，但不机械照搬模型状态切分和专家并行。优化并行维度必须由参数、激活和通信的实测比例决定。
 
-![分布式训练机制对比](../Materials/efficiency/figures/distributed_parallelism_comparison.png)
+![分布式训练机制对比](../Materials/figs/distributed_parallelism_comparison.png)
 
 > **图注｜分布式训练机制对比。** 图中统一比较表 4-21 的 DDP、梯度归约重叠、分布式优化器、ZeRO/FSDP、专家并行和成本感知数据分片，并补充 TP、PP、Ulysses Parallelism 与 Context Parallelism；每格分别标出切分对象、主要 collective 及其与当前模型瓶颈的匹配关系。U-MoE-Fusion 的参数状态很小、激活和本地计算占主导，因此当前选择 DDP 及其分桶重叠优化，而不引入额外的模型、专家或长上下文切分。（小白版：不同并行方法是在“切不同的东西”；本模型最适合把数据分给多张卡，而不是把很小的模型再拆开并频繁通信。）
 
