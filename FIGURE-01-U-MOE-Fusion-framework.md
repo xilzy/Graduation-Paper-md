@@ -42,7 +42,9 @@ MoE 放大框区分了两条计算路径：共享专家始终参与，softmax �
 
 图中全部英文（普通、粗体、斜体）使用真正的 **Times New Roman**，PDF 校验只嵌入 `TimesNewRomanPSMT / TimesNewRomanPS-BoldMT / TimesNewRomanPS-ItalicMT`。不同结构使用互不相同的颜色；底部“Complete Module Legend”不仅列 I1–I5，还完整覆盖 Preprocess、Conv stem、ACM、共享/路由专家、特征求和、色度重建、Task I/O 与训练优化。
 
-输入与输出示例统一使用相同物理尺寸的方形画框。脚本通过等比例缩放与中性留白容纳原图，既不强制拉伸，也不裁掉 IR–VIS 的横向视野；因此图中输入和融合输出可直接按同一比例比较。
+输入与输出示例按任务保持原始宽高比：IR–VIS 使用 4:3，Medical 与 GFP–PC 使用 1:1；同一任务两路输入和融合输出的画框尺寸完全一致。脚本只做等比例缩小，不添加白边、不拉伸也不裁剪，因此可直接比较输入与输出。
+
+Zoom-In 中的 SUM 已改为与 B 区特征汇聚节点相同的圆形和半径；B 区 Blocks 与末列 ACM 之间扩大了留白。所有数据流箭头绘制在方框边界之上并统一放大，分支、专家、决策头、色度重建、损失旁路和三任务输出的流向均有可见箭头。
 
 ### C. 融合与重建
 

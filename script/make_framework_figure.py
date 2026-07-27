@@ -56,7 +56,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import font_manager
 from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Rectangle
-from PIL import Image, ImageOps
+from PIL import Image
 
 
 C = {
@@ -180,12 +180,12 @@ def line(ax, points, color=None, lw=1.4, z=2):
     )
 
 
-def arrow(ax, start, end, color=None, lw=1.4, ms=9, z=3):
+def arrow(ax, start, end, color=None, lw=1.4, ms=9, z=6):
     patch = FancyArrowPatch(
         start,
         end,
         arrowstyle="-|>",
-        mutation_scale=ms,
+        mutation_scale=max(ms, 9),
         linewidth=lw,
         color=color or C["ink"],
         shrinkA=0,
@@ -196,29 +196,25 @@ def arrow(ax, start, end, color=None, lw=1.4, ms=9, z=3):
     return patch
 
 
-def routed_arrow(ax, points, color=None, lw=1.4, ms=9, z=3):
+def routed_arrow(ax, points, color=None, lw=1.4, ms=9, z=6):
     if len(points) < 2:
         raise ValueError("routed_arrow needs at least two points")
     if len(points) > 2:
-        line(ax, points[:-1], color=color, lw=lw, z=z)
+        line(ax, points[:-1], color=color, lw=lw, z=max(2, z - 3))
     return arrow(ax, points[-2], points[-1], color=color, lw=lw, ms=ms, z=z)
 
 
-def load_thumb(path: Path, size=(240, 240), grayscale=False):
-    """Preserve source aspect ratio and letterbox instead of stretching."""
+def load_thumb(path: Path, size=(320, 320), grayscale=False):
+    """Downsample while preserving the original aspect ratio without padding."""
     mode = "L" if grayscale else "RGB"
-    background = 245 if grayscale else (245, 245, 245)
     if not path.is_file():
         return np.full((size[1], size[0]), 245, dtype=np.uint8) if grayscale else np.full(
             (size[1], size[0], 3), 245, dtype=np.uint8
         )
     with Image.open(path) as image:
         image = image.convert(mode)
-        contained = ImageOps.contain(image, size, method=Image.Resampling.LANCZOS)
-        canvas = Image.new(mode, size, background)
-        offset = ((size[0] - contained.width) // 2, (size[1] - contained.height) // 2)
-        canvas.paste(contained, offset)
-        return np.asarray(canvas)
+        image.thumbnail(size, Image.Resampling.LANCZOS)
+        return np.asarray(image)
 
 
 def image_box(ax, path, x, y, w, h, border, grayscale=False, z=5):
@@ -245,16 +241,25 @@ def image_box(ax, path, x, y, w, h, border, grayscale=False, z=5):
     )
 
 
-def task_card(ax, y, title, source_a, source_b, label_a, label_b, gray_b=True):
+FIGURE_XY_ASPECT = 18.0 / 9.4
+THUMBNAIL_WIDTH = 0.055
+THUMBNAIL_AREA_Y = 0.020
+THUMBNAIL_AREA_HEIGHT = 0.110
+
+
+def task_card(ax, y, title, source_a, source_b, label_a, label_b,
+              frame_aspect, gray_b=True):
     x, w, h = 0.018, 0.171, 0.155
     rounded(ax, x, y, w, h, fc=C["white"], ec=C["task"], lw=1.25, radius=0.009)
     txt(ax, x + 0.010, y + h - 0.015, title, size=8.5, weight="bold",
         color=C["task"], ha="left")
-    image_w, image_h, gap = 0.055, 0.105, 0.012
+    image_w = THUMBNAIL_WIDTH
+    image_h = image_w * FIGURE_XY_ASPECT / frame_aspect
+    gap = 0.012
     total_w = image_w * 2 + gap
     image_x1 = x + (w - total_w) / 2
     image_x2 = image_x1 + image_w + gap
-    image_y = y + 0.025
+    image_y = y + THUMBNAIL_AREA_Y + (THUMBNAIL_AREA_HEIGHT - image_h) / 2
     image_box(ax, source_a, image_x1, image_y, image_w, image_h, C["task"])
     image_box(ax, source_b, image_x2, image_y, image_w, image_h, C["task"], grayscale=gray_b)
     txt(ax, image_x1 + image_w / 2, y + 0.012, label_a, size=6.4, weight="bold")
@@ -262,12 +267,14 @@ def task_card(ax, y, title, source_a, source_b, label_a, label_b, gray_b=True):
     return x + w, y + h / 2
 
 
-def output_card(ax, y, title, image, grayscale=False):
+def output_card(ax, y, title, image, frame_aspect, grayscale=False):
     x, w, h = 0.908, 0.073, 0.150
     rounded(ax, x, y, w, h, fc=C["white"], ec=C["task"], lw=1.25, radius=0.009)
     txt(ax, x + w / 2, y + h - 0.015, title, size=7.1, weight="bold", color=C["task"])
-    image_w, image_h = 0.055, 0.105
-    image_box(ax, image, x + (w - image_w) / 2, y + 0.022,
+    image_w = THUMBNAIL_WIDTH
+    image_h = image_w * FIGURE_XY_ASPECT / frame_aspect
+    image_y = y + THUMBNAIL_AREA_Y + (THUMBNAIL_AREA_HEIGHT - image_h) / 2
+    image_box(ax, image, x + (w - image_w) / 2, image_y,
               image_w, image_h, C["task"], grayscale=grayscale)
     return x, y + h / 2
 
@@ -315,11 +322,11 @@ def build_figure(code_root: Path, data_root: Path, output_dir: Path, font_dir: P
 
     source_ports = [
         task_card(ax, 0.720, "IR-VIS", examples["ir_a"], examples["ir_b"],
-                  "Visible", "Infrared", gray_b=True),
+                  "Visible", "Infrared", frame_aspect=4 / 3, gray_b=True),
         task_card(ax, 0.525, "Medical", examples["med_a"], examples["med_b"],
-                  "PET/SPECT", "MRI", gray_b=True),
+                  "PET/SPECT", "MRI", frame_aspect=1.0, gray_b=True),
         task_card(ax, 0.330, "Microscopy", examples["gfp_a"], examples["gfp_b"],
-                  "GFP", "Phase Contrast", gray_b=True),
+                  "GFP", "Phase Contrast", frame_aspect=1.0, gray_b=True),
     ]
 
     pre_x, pre_y, pre_w, pre_h = 0.207, 0.370, 0.076, 0.450
@@ -390,17 +397,17 @@ def build_figure(code_root: Path, data_root: Path, output_dir: Path, font_dir: P
         txt(ax, 0.6125, center_y - 0.010, "MoE-FFN", size=6.6,
             weight="bold", color=C["moe"])
 
-        arrow(ax, (0.656, center_y), (0.662, center_y), lw=1.1, ms=6)
-        rounded(ax, 0.662, center_y - 0.033, 0.040, 0.066,
+        arrow(ax, (0.656, center_y), (0.672, center_y), lw=1.1, ms=7)
+        rounded(ax, 0.672, center_y - 0.033, 0.035, 0.066,
                 fc=C["acm_light"], ec=C["acm"], lw=1.1, radius=0.007)
-        txt(ax, 0.682, center_y, "ACM", size=7.0, weight="bold", color=C["acm"])
-        arrow(ax, (0.702, center_y), (0.726, center_y), lw=1.05, ms=6)
+        txt(ax, 0.6895, center_y, "ACM", size=6.8, weight="bold", color=C["acm"])
+        arrow(ax, (0.707, center_y), (0.729, center_y), lw=1.05, ms=7)
 
-    line(ax, [(0.726, branch_y[-1]), (0.726, branch_y[0])], lw=1.15)
-    sum_circle = Circle((0.726, branch_y[1]), 0.011, facecolor=C["sum_light"],
+    line(ax, [(0.729, branch_y[-1]), (0.729, branch_y[0])], lw=1.15)
+    sum_circle = Circle((0.729, branch_y[1]), 0.011, facecolor=C["sum_light"],
                         edgecolor=C["sum"], linewidth=1.2, zorder=5)
     ax.add_patch(sum_circle)
-    txt(ax, 0.726, branch_y[1], "SUM", size=5.7, weight="bold", color=C["sum"])
+    txt(ax, 0.729, branch_y[1], "SUM", size=5.7, weight="bold", color=C["sum"])
 
     inset_x, inset_y, inset_w, inset_h = 0.321, 0.180, 0.408, 0.170
     rounded(ax, inset_x, inset_y, inset_w, inset_h, fc="#F8F5FA", ec=C["task"],
@@ -439,12 +446,13 @@ def build_figure(code_root: Path, data_root: Path, output_dir: Path, font_dir: P
         pill(ax, x, 0.239, 0.020, 0.022, label, C["white"], C["routed"], size=5.2)
     arrow(ax, (0.495, 0.258), (0.525, 0.258), color=C["routed"], lw=0.95, ms=5)
 
-    rounded(ax, 0.675, 0.233, 0.040, 0.089, fc=C["sum_light"], ec=C["sum"],
-            lw=1.0, radius=0.014)
-    txt(ax, 0.695, 0.278, "SUM", size=6.2, weight="bold", color=C["sum"])
-    arrow(ax, (0.640, 0.305), (0.675, 0.305), color=C["shared"], lw=0.9, ms=5)
-    arrow(ax, (0.640, 0.258), (0.675, 0.258), color=C["routed"], lw=0.9, ms=5)
-    arrow(ax, (0.715, 0.278), (0.722, 0.278), color=C["sum"], lw=0.9, ms=5)
+    zoom_sum = Circle((0.695, 0.278), 0.011, facecolor=C["sum_light"],
+                      edgecolor=C["sum"], linewidth=1.2, zorder=5)
+    ax.add_patch(zoom_sum)
+    txt(ax, 0.695, 0.278, "SUM", size=5.7, weight="bold", color=C["sum"])
+    arrow(ax, (0.640, 0.305), (0.686, 0.284), color=C["shared"], lw=0.9, ms=7)
+    arrow(ax, (0.640, 0.258), (0.686, 0.272), color=C["routed"], lw=0.9, ms=7)
+    arrow(ax, (0.706, 0.278), (0.722, 0.278), color=C["sum"], lw=0.9, ms=7)
     txt(ax, 0.718, 0.297, "Output", size=5.5, color=C["muted"])
 
     decision_x, decision_y, decision_w, decision_h = 0.765, 0.545, 0.111, 0.150
@@ -470,9 +478,9 @@ def build_figure(code_root: Path, data_root: Path, output_dir: Path, font_dir: P
     arrow(ax, (0.8205, decision_y), (0.8205, 0.495), color=C["chroma"], lw=0.95, ms=5)
 
     output_ports = [
-        output_card(ax, 0.715, "IR-VIS", examples["ir_f"], grayscale=True),
-        output_card(ax, 0.515, "Medical", examples["med_f"]),
-        output_card(ax, 0.315, "GFP-PC", examples["gfp_f"]),
+        output_card(ax, 0.715, "IR-VIS", examples["ir_f"], frame_aspect=4 / 3, grayscale=True),
+        output_card(ax, 0.515, "Medical", examples["med_f"], frame_aspect=1.0),
+        output_card(ax, 0.315, "GFP-PC", examples["gfp_f"], frame_aspect=1.0),
     ]
     bus_x = 0.894
     line(ax, [(bus_x, output_ports[-1][1]), (bus_x, output_ports[0][1])], lw=1.1)
