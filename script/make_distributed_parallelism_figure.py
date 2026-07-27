@@ -164,6 +164,16 @@ def rounded(
     return patch
 
 
+def publication_text_size(size):
+    if size >= 15:
+        return size
+    if size >= 8:
+        return size + 3.0
+    if size >= 6:
+        return size + 4.0
+    return max(9.5, size + 4.5)
+
+
 def text(
     ax,
     x,
@@ -184,7 +194,7 @@ def text(
         x,
         y,
         value,
-        fontsize=size,
+        fontsize=publication_text_size(size),
         fontweight=weight,
         color=color or C["ink"],
         ha=ha,
@@ -664,8 +674,6 @@ def draw_up(ax, x, y, w, h):
         arrow(ax, (xx + box_w / 2, y + 0.180),
               (xx + box_w / 2, bottom_y + 0.039),
               color=C["a2a"], lw=0.7, ms=6)
-    text(ax, x + w / 2, y + 0.122, "local full-sequence attention; second A2A restores S/4",
-         size=5.0, color=color)
     notes(
         ax, x, y, w,
         "sequence first, then attention heads",
@@ -801,41 +809,56 @@ def summary_strip(ax):
 
 def build_figure(output_dir: Path, font_dir: Path) -> Path:
     setup_style(font_dir)
-    fig = plt.figure(figsize=(20.0, 11.0))
-    ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis("off")
-
-    ax.add_patch(Rectangle((0, 0), 1, 1, facecolor=C["canvas"], edgecolor="none", zorder=-2))
-    text(ax, 0.5, 0.978, "Distributed Training Mechanisms: What Is Sharded and How It Communicates",
-         size=18, weight="bold")
-    text(
-        ax,
+    fig = plt.figure(figsize=(16.0, 24.0))
+    fig.patch.set_facecolor(C["canvas"])
+    fig.text(
         0.5,
-        0.949,
+        0.982,
+        "Distributed Training Mechanisms: What Is Sharded and How It Communicates",
+        fontsize=18,
+        fontweight="bold",
+        color=C["ink"],
+        ha="center",
+        va="center",
+    )
+    fig.text(
+        0.5,
+        0.958,
         "Mechanisms from Table 4-21 plus TP, PP, Ulysses Parallelism and Context Parallelism",
-        size=8.5,
+        fontsize=11,
         color=C["muted"],
+        ha="center",
+        va="center",
     )
 
-    card_w = 0.188
-    xs = [0.012, 0.209, 0.406, 0.603, 0.800]
-    top_y, top_h = 0.560, 0.365
-    bottom_y, bottom_h = 0.185, 0.350
-    draw_ddp(ax, xs[0], top_y, card_w, top_h)
-    draw_overlap(ax, xs[1], top_y, card_w, top_h)
-    draw_distributed_optimizer(ax, xs[2], top_y, card_w, top_h)
-    draw_fsdp(ax, xs[3], top_y, card_w, top_h)
-    draw_balance(ax, xs[4], top_y, card_w, top_h)
+    card_w, card_h = 0.188, 0.365
+    draw_cards = [
+        draw_ddp,
+        draw_overlap,
+        draw_distributed_optimizer,
+        draw_fsdp,
+        draw_balance,
+        draw_tp,
+        draw_pp,
+        draw_ep,
+        draw_up,
+        draw_cp,
+    ]
+    row_bottoms = [0.790, 0.635, 0.480, 0.325, 0.170]
+    column_lefts = [0.020, 0.510]
+    for index, draw_card in enumerate(draw_cards):
+        row, column = divmod(index, 2)
+        card_ax = fig.add_axes([column_lefts[column], row_bottoms[row], 0.470, 0.145])
+        card_ax.set_xlim(-0.004, card_w + 0.004)
+        card_ax.set_ylim(-0.004, card_h + 0.004)
+        card_ax.axis("off")
+        draw_card(card_ax, 0.0, 0.0, card_w, card_h)
 
-    draw_tp(ax, xs[0], bottom_y, card_w, bottom_h)
-    draw_pp(ax, xs[1], bottom_y, card_w, bottom_h)
-    draw_ep(ax, xs[2], bottom_y, card_w, bottom_h)
-    draw_up(ax, xs[3], bottom_y, card_w, bottom_h)
-    draw_cp(ax, xs[4], bottom_y, card_w, bottom_h)
-
-    summary_strip(ax)
+    summary_ax = fig.add_axes([0.020, 0.015, 0.960, 0.140])
+    summary_ax.set_xlim(0, 1)
+    summary_ax.set_ylim(0, 0.17)
+    summary_ax.axis("off")
+    summary_strip(summary_ax)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     base = output_dir / "distributed_parallelism_comparison"

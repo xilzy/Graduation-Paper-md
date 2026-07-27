@@ -18,6 +18,8 @@ Usage:
 import os, string, argparse
 import numpy as np
 from PIL import Image, ImageDraw
+from figure_fonts import setup_times_new_roman
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -74,6 +76,7 @@ def sanitize(s):
 
 
 def main():
+    setup_times_new_roman()
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True, choices=["irvis", "medical", "gfp_pc"])
     ap.add_argument("--subtag", default="", help="medical: pet|spect (subfolder + srcA label)")

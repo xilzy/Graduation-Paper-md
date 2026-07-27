@@ -170,6 +170,16 @@ def group_box(ax, x, y, w, h, *, fc, ec, lw=1.35, radius=0.017, z=1):
     )
 
 
+def publication_text_size(size):
+    if size >= 15:
+        return size
+    if size >= 10:
+        return size + 1.5
+    if size >= 8:
+        return size + 2.0
+    return max(8.5, size + 2.5)
+
+
 def text(
     ax,
     x,
@@ -190,7 +200,7 @@ def text(
         x,
         y,
         value,
-        fontsize=size,
+        fontsize=publication_text_size(size),
         fontweight=weight,
         color=color or C["ink"],
         ha=ha,
@@ -885,16 +895,6 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     for label, fc, ec, width in legend:
         legend_item(ax, x, 0.035, width, label, fc, ec)
         x += width + 0.008
-    text(
-        ax,
-        0.970,
-        0.052,
-        "Each window attends locally over 64 tokens",
-        size=6.5,
-        color=C["muted"],
-        ha="right",
-        style="italic",
-    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     base = output_dir / "fig_u_moe_window_attention_detail"

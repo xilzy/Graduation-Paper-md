@@ -7,6 +7,8 @@ import json
 import re
 from pathlib import Path
 
+from figure_fonts import setup_times_new_roman
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
@@ -30,7 +32,13 @@ def parse_args():
 
 def save(fig, output_dir: Path, stem: str):
     output_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_dir / f"{stem}.svg", bbox_inches="tight")
+    svg_path = output_dir / f"{stem}.svg"
+    fig.savefig(svg_path, bbox_inches="tight")
+    svg_text = svg_path.read_text(encoding="utf-8")
+    svg_path.write_text(
+        "\n".join(line.rstrip() for line in svg_text.splitlines()) + "\n",
+        encoding="utf-8",
+    )
     fig.savefig(output_dir / f"{stem}.png", dpi=220, bbox_inches="tight")
     plt.close(fig)
 
@@ -108,7 +116,7 @@ def sdpa_attention(output_dir: Path):
     ax = axes[0]
     ax.set_title("(a) Hand-written window attention", fontsize=12,
                  fontweight="bold")
-    labels = ("QKᵀ", "+ bias", "softmax", "P·V")
+    labels = ("QK^T", "+ bias", "softmax", "P x V")
     colors = (COLORS["blue"], COLORS["orange"], COLORS["red"], COLORS["blue"])
     for i, (label, color) in enumerate(zip(labels, colors)):
         x = 0.45 + i * 2.35
@@ -127,7 +135,7 @@ def sdpa_attention(output_dir: Path):
                  fontweight="bold")
     rounded_box(ax, (0.55, 4.5), 2.0, 0.95, "Q, K, V + bias", COLORS["blue"])
     rounded_box(ax, (3.25, 3.65), 3.5, 2.5,
-                "scaled_dot_product_attention\n\n tiled QKᵀ → online softmax → PV",
+                "scaled_dot_product_attention\n\n tiled QK^T -> online softmax -> PV",
                 COLORS["green"], fontsize=10)
     rounded_box(ax, (7.45, 4.5), 1.9, 0.95, "output", COLORS["blue"])
     arrow(ax, (2.55, 4.98), (3.25, 4.98))
@@ -395,8 +403,8 @@ def data_plots(data_dir: Path, output_dir: Path):
         ax = axes[0]
         ax.plot(caps, drops, "o-", color=COLORS["red"], label="dispatch drop (%)")
         ax.set_xlabel("capacity factor α"); ax.set_ylabel("drop rate (%)", color=COLORS["red"])
-        ax2 = ax.twinx(); ax2.plot(caps, mae, "s--", color=COLORS["blue"], label="output MAE ×10⁴")
-        ax2.set_ylabel("output MAE vs sparse (×10⁴)", color=COLORS["blue"])
+        ax2 = ax.twinx(); ax2.plot(caps, mae, "s--", color=COLORS["blue"], label="output MAE x 10^4")
+        ax2.set_ylabel("output MAE vs sparse (x 10^4)", color=COLORS["blue"])
         ax.grid(alpha=0.22); ax.set_title("Quality risk falls with capacity")
         ax = axes[1]
         ax.plot(caps, throughput, "o-", color=COLORS["green"], label="samples/s")
@@ -653,7 +661,7 @@ def bottleneck_plots(data_dir: Path, output_dir: Path):
 
 if __name__ == "__main__":
     args = parse_args()
-    plt.rcParams.update({"font.family": "DejaVu Sans", "axes.unicode_minus": False})
+    setup_times_new_roman()
     compile_fusion(args.output_dir)
     sdpa_attention(args.output_dir)
     grouped_pipeline(args.output_dir)

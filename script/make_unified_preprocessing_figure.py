@@ -168,6 +168,16 @@ def group_box(ax, x, y, w, h, *, fc, ec, lw=1.35, radius=0.016, z=1):
     )
 
 
+def publication_text_size(size):
+    if size >= 15:
+        return size
+    if size >= 10:
+        return size + 1.5
+    if size >= 8:
+        return size + 2.0
+    return max(8.5, size + 2.5)
+
+
 def text(
     ax,
     x,
@@ -188,7 +198,7 @@ def text(
         x,
         y,
         value,
-        fontsize=size,
+        fontsize=publication_text_size(size),
         fontweight=weight,
         color=color or C["ink"],
         ha=ha,

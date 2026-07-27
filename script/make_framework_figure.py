@@ -150,13 +150,23 @@ def rounded(ax, x, y, w, h, fc="white", ec=None, lw=1.0, radius=0.010, z=4):
     return patch
 
 
+def publication_text_size(size):
+    if size >= 15:
+        return size
+    if size >= 10:
+        return size + 1.5
+    if size >= 8:
+        return size + 2.0
+    return max(8.5, size + 2.5)
+
+
 def txt(ax, x, y, value, size=9, weight="normal", color=None, ha="center",
         va="center", z=7, linespacing=1.10, style="normal"):
     return ax.text(
         x,
         y,
         value,
-        fontsize=size,
+        fontsize=publication_text_size(size),
         fontweight=weight,
         color=color or C["ink"],
         ha=ha,

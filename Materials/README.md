@@ -47,6 +47,8 @@ Materials/
 
 `figs/fig_u_moe_window_attention_detail.{pdf,png}` 展开最终 W96L 的 8×8 Window Attention：输入经 LayerNorm 和反射填充后划分为非移位窗口，每窗 64 个 token 通过 8 头 Q/K/V、`15×15` 相对位置偏置及 fused SDPA 建模，再经多头拼接、线性投影、window reverse、裁剪和残差连接输出。脚本为 `script/make_window_attention_figure.py`，实现映射详见根目录 `FIGURE-04-Window-attention-detail.md`。
 
+`figs/` 下五组自定义框架/原理图的英文统一使用 Times New Roman；正文和微型标签按正文插图可读性重新放大，最小字号约 8 pt，普通说明约 9–11 pt。分布式机制对比图采用五行两列排版，避免十个模块横向挤压。
+
 ```bash
 cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
 /ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_framework_figure.py
