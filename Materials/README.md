@@ -35,7 +35,7 @@ Materials/
 
 ## 方法总体框架图（figs/）
 
-`figs/fig_u_moe_fusion_framework.{pdf,png}` 展示 U-MoE-Fusion 从三任务统一亮度输入、三分支 ACM + 窗口 Transformer 骨干、任务条件 top-2 MoE，到决策图融合、色度重组与 maxfuse 训练目标的完整流程；底部另列 grouped-MoE、SDPA、compile 与 DDP 工程优化。脚本为 `script/make_framework_figure.py`，设计与实现映射详见根目录 `FIGURE-01-U-MOE-Fusion-framework.md`。
+`figs/fig_u_moe_fusion_framework.{pdf,png}` 展示 U-MoE-Fusion 从三任务统一亮度输入、三分支 ACM + 窗口 Transformer 骨干、任务条件 top-2 MoE，到决策图融合、色度重组与 maxfuse 训练目标的完整流程；底部另列完整模块图例及 grouped-MoE、SDPA、compile、DDP 工程优化。图中英文统一为 Times New Roman，输入/输出缩略图采用同尺寸等比例留白显示、不拉伸。脚本为 `script/make_framework_figure.py`，设计与实现映射详见根目录 `FIGURE-01-U-MOE-Fusion-framework.md`。
 
 ```bash
 cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md

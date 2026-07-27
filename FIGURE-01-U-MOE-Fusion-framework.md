@@ -36,9 +36,13 @@
 
 MoE 放大框区分了两条计算路径：共享专家始终参与，softmax 路由器仅选择 12 个路由专家中的 top-2；路由负载由 `L_balance` 约束。该表示对应最终 W96L 配置，不把实验过但未采用的 DeepSeek 路由、INN detail head 或 per-task head 画入主图。
 
-### 版式与图例
+### 版式、字体与完整图例
 
-修订版取消全部穿框虚线和悬浮创新点徽标：数据流统一采用连续实线，跨模块连接沿留白通道或汇聚总线布置；任务条件和训练目标分别在独立通道中连接。I1–I5 在模块标题中直接标注，并在图底部提供完整创新点图例，避免线段、文字和方框互相遮挡。
+最终版取消全部穿框虚线和悬浮创新点徽标：A 区输入到预处理、预处理到 Conv stem、主干到决策头以及 MoE 放大框的主要路径均采用水平或垂直直线；只有多分支汇聚与训练旁路保留必要的直角转折。各模块之间留有明确间隔，末列 ACM 与特征求和节点也已分离。
+
+图中全部英文（普通、粗体、斜体）使用真正的 **Times New Roman**，PDF 校验只嵌入 `TimesNewRomanPSMT / TimesNewRomanPS-BoldMT / TimesNewRomanPS-ItalicMT`。不同结构使用互不相同的颜色；底部“Complete Module Legend”不仅列 I1–I5，还完整覆盖 Preprocess、Conv stem、ACM、共享/路由专家、特征求和、色度重建、Task I/O 与训练优化。
+
+输入与输出示例统一使用相同物理尺寸的方形画框。脚本通过等比例缩放与中性留白容纳原图，既不强制拉伸，也不裁掉 IR–VIS 的横向视野；因此图中输入和融合输出可直接按同一比例比较。
 
 ### C. 融合与重建
 
@@ -67,7 +71,7 @@ cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
   script/make_framework_figure.py
 ```
 
-脚本默认读取论文实验使用的三组代表样本；可用 `--code-root`、`--data-root` 和 `--output-dir` 改路径。生成后的 PDF/PNG 均为自包含文件，不依赖外部图片即可移动或排版。
+脚本默认读取论文实验使用的三组代表样本，并从 `/ytech_m2v4_hdd/lizhongyin/.cache/fonts/times-new-roman/` 加载 Times New Roman；可用 `--code-root`、`--data-root`、`--font-dir` 和 `--output-dir` 改路径。生成后的 PDF/PNG 均为自包含文件，不依赖外部图片即可移动或排版。
 
 ## 5. 建议图题
 
