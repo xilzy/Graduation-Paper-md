@@ -176,7 +176,7 @@ def publication_text_size(size):
         return size + 1.5
     if size >= 8:
         return size + 2.0
-    return max(8.5, size + 2.5)
+    return max(9.5, size + 3.5)
 
 
 def text(
@@ -845,7 +845,7 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     text(
         ax,
         0.325,
-        0.166,
+        0.198,
         "Residual shortcut  F'",
         size=6.8,
         weight="bold",

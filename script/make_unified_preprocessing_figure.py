@@ -175,7 +175,7 @@ def publication_text_size(size):
         return size + 1.5
     if size >= 8:
         return size + 2.0
-    return max(8.5, size + 2.5)
+    return max(9.5, size + 3.5)
 
 
 def text(
@@ -800,10 +800,10 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
 
     rounded(
         ax,
-        0.780,
-        0.525,
-        0.175,
-        0.205,
+        0.775,
+        0.480,
+        0.185,
+        0.270,
         fc=C["contract_light"],
         ec=C["contract"],
         lw=1.2,
@@ -813,17 +813,17 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     text(
         ax,
         0.8675,
-        0.704,
+        0.725,
         "Unified Network Input",
         size=8.6,
         weight="bold",
         color=C["contract"],
     )
-    channel_planes(ax, 0.797, 0.615)
+    channel_planes(ax, 0.835, 0.645)
     text(
         ax,
-        0.885,
-        0.653,
+        0.8675,
+        0.610,
         "X = concat(Y_A, Y_B)\n2 channels; range [0, 1]",
         size=7.1,
         weight="bold",
@@ -832,7 +832,7 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     text(
         ax,
         0.8675,
-        0.582,
+        0.520,
         "Train: 2 x 170 x 170\nInfer: 2 x H x W\nplus task_id = t",
         size=7.0,
         weight="bold",
@@ -841,7 +841,7 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     output_bus_x = 0.751
     line(
         ax,
-        [(output_bus_x, 0.295), (output_bus_x, 0.595)],
+        [(output_bus_x, 0.295), (output_bus_x, 0.572)],
         color=C["contract"],
         lw=1.1,
         z=2,
@@ -866,8 +866,8 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     )
     arrow(
         ax,
-        (output_bus_x, 0.595),
-        (0.780, 0.595),
+        (output_bus_x, 0.572),
+        (0.775, 0.572),
         color=C["contract"],
         lw=1.15,
         ms=10,
@@ -877,7 +877,7 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     module_box(
         ax,
         0.800,
-        0.405,
+        0.390,
         0.135,
         0.065,
         "Shared U-MoE Backbone\nsame weights for all tasks",
@@ -887,8 +887,8 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     )
     arrow(
         ax,
-        (0.8675, 0.525),
-        (0.8675, 0.470),
+        (0.8675, 0.480),
+        (0.8675, 0.455),
         color=C["contract"],
         lw=1.2,
     )

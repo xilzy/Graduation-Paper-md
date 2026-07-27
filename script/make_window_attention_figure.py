@@ -177,7 +177,7 @@ def publication_text_size(size):
         return size + 1.5
     if size >= 8:
         return size + 2.0
-    return max(8.5, size + 2.5)
+    return max(9.5, size + 3.5)
 
 
 def text(
