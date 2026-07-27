@@ -6,8 +6,9 @@
 
 ```
 Materials/
-├── figs/                方法章节总体框架图（PDF + PNG）
-│   └── fig_u_moe_fusion_framework.*
+├── figs/                方法章节总体框架与模块详图（PDF + PNG）
+│   ├── fig_u_moe_fusion_framework.*
+│   └── fig_u_moe_ffn_detail.*
 ├── comparison/          §4.2 与 SOTA 的定性对比图（本批已产出）
 │   ├── irvis/
 │   │   ├── individual/            # 12 张单图（带红框+左下角局部放大），供 PPT 自排
@@ -33,13 +34,16 @@ Materials/
 
 命名约定（后续各章沿用）：`<类别>/<子项>/{individual/, fig_<子项>_*.png}`。类别用途固定为 `comparison`（对比）、`ablation`（消融）、`hyperparam`（超参）。
 
-## 方法总体框架图（figs/）
+## 方法框架与模块详图（figs/）
 
 `figs/fig_u_moe_fusion_framework.{pdf,png}` 展示 U-MoE-Fusion 从三任务统一亮度输入、三分支 ACM + 窗口 Transformer 骨干、任务条件 top-2 MoE，到决策图融合、色度重组与 maxfuse 训练目标的完整流程；底部另列完整模块图例及 grouped-MoE、SDPA、compile、DDP 工程优化。图中英文统一为 Times New Roman；IR–VIS 输入/输出保持 4:3，Medical 与 GFP–PC 保持 1:1，同任务画框同尺寸，不加白边、不拉伸、不裁剪。脚本为 `script/make_framework_figure.py`，设计与实现映射详见根目录 `FIGURE-01-U-MOE-Fusion-framework.md`。
+
+`figs/fig_u_moe_ffn_detail.{pdf,png}` 参照原论文 `figs/3.pdf` 的横向分栏、浅色背景和虚线分组风格，详细展开任务嵌入、softmax top-2 路由、1 个常开共享专家、12 个路由专家、grouped-capacity dispatch、负载均衡辅助损失、残差连接以及单个 `C→4C→C` FFN 专家。E3/E9 仅表示一次示意性 token 路由，不是固定专家。脚本为 `script/make_moe_ffn_detail_figure.py`，实现映射详见根目录 `FIGURE-02-U-MoE-FFN-detail.md`。
 
 ```bash
 cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
 /ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_framework_figure.py
+/ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_moe_ffn_detail_figure.py
 ```
 
 ## 训练效率图（efficiency/）
