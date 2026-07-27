@@ -694,18 +694,9 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
         ax,
         (y_bus_x, 0.7675),
         (0.540, 0.7675),
-        color=C["align"],
+        color=C["luma"],
         lw=1.15,
         shrink_a=0,
-    )
-    text(
-        ax,
-        0.6325,
-        0.710,
-        "Y_B and inference Cb / Cr use the same aligned size",
-        size=6.2,
-        color=C["muted"],
-        style="italic",
     )
 
     group_box(
@@ -791,7 +782,7 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     )
     routed_arrow(
         ax,
-        [(0.680, 0.735), (0.733, 0.735), (0.733, 0.295), (0.707, 0.295)],
+        [(0.540, 0.755), (0.530, 0.755), (0.530, 0.295), (0.558, 0.295)],
         color=C["infer"],
         lw=1.05,
         ms=9,
@@ -837,21 +828,40 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
         weight="bold",
     )
 
+    output_bus_x = 0.751
+    line(
+        ax,
+        [(output_bus_x, 0.295), (output_bus_x, 0.595)],
+        color=C["contract"],
+        lw=1.1,
+        z=2,
+    )
     arrow(
         ax,
         (0.707, 0.460),
-        (0.780, 0.630),
+        (output_bus_x, 0.460),
         color=C["train"],
         lw=1.1,
         ms=10,
+        shrink_b=0,
     )
     arrow(
         ax,
         (0.707, 0.295),
-        (0.780, 0.565),
+        (output_bus_x, 0.295),
         color=C["infer"],
         lw=1.1,
         ms=10,
+        shrink_b=0,
+    )
+    arrow(
+        ax,
+        (output_bus_x, 0.595),
+        (0.780, 0.595),
+        color=C["contract"],
+        lw=1.15,
+        ms=10,
+        shrink_a=0,
     )
 
     module_box(
