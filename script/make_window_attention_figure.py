@@ -614,12 +614,11 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
         ec=C["sdpa"],
         size=7.3,
     )
-    target_ports = [0.305, 0.380, 0.455]
-    for center, target, color in zip(qkv_centers, target_ports, [C["q"], C["k"], C["v"]]):
+    for center, color in zip(qkv_centers, [C["q"], C["k"], C["v"]]):
         arrow(
             ax,
             (center, 0.500),
-            (target, 0.565),
+            (center, 0.565),
             color=color,
             lw=1.0,
             ms=9,
