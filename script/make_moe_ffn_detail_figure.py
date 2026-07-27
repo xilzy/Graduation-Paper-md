@@ -643,23 +643,13 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
         [
             (0.155, 0.600),
             (0.182, 0.600),
-            (0.182, 0.862),
-            (0.522, 0.862),
+            (0.182, 0.875),
+            (0.522, 0.875),
             (0.522, 0.786),
         ],
         color=C["shared"],
         lw=1.15,
     )
-    text(
-        ax,
-        0.354,
-        0.872,
-        "Always-on shared path  h",
-        size=6.7,
-        weight="bold",
-        color=C["shared"],
-    )
-
     module_box(
         ax,
         0.434,
@@ -715,16 +705,6 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
         lw=1.05,
         ms=9,
     )
-    text(
-        ax,
-        0.522,
-        0.244,
-        "Illustrative selection: E3 and E9 execute",
-        size=6.4,
-        color=C["active"],
-        style="italic",
-    )
-
     module_box(
         ax,
         0.445,
@@ -792,10 +772,9 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
         color=C["shared"],
         lw=1.05,
     )
-    arrow(
+    routed_arrow(
         ax,
-        (0.605, 0.2065),
-        (0.672, 0.588),
+        [(0.605, 0.2065), (0.621, 0.2065), (0.621, 0.588), (0.668, 0.588)],
         color=C["routed"],
         lw=1.05,
     )
@@ -855,11 +834,12 @@ def build_figure(output_dir: Path, font_dir: Path) -> Path:
     text(
         ax,
         0.325,
-        0.155,
+        0.166,
         "Residual shortcut  F'",
         size=6.8,
         weight="bold",
         color=C["residual"],
+        bbox={"facecolor": C["main_bg"], "edgecolor": "none", "pad": 1.0},
     )
 
     module_box(
