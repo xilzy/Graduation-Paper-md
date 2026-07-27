@@ -180,7 +180,8 @@ def line(ax, points, color=None, lw=1.4, z=2):
     )
 
 
-def arrow(ax, start, end, color=None, lw=1.4, ms=9, z=6):
+def arrow(ax, start, end, color=None, lw=1.4, ms=9, z=3,
+          shrink_a=1.5, shrink_b=1.5):
     patch = FancyArrowPatch(
         start,
         end,
@@ -188,19 +189,21 @@ def arrow(ax, start, end, color=None, lw=1.4, ms=9, z=6):
         mutation_scale=max(ms, 9),
         linewidth=lw,
         color=color or C["ink"],
-        shrinkA=0,
-        shrinkB=0,
+        shrinkA=shrink_a,
+        shrinkB=shrink_b,
         zorder=z,
     )
     ax.add_patch(patch)
     return patch
 
 
-def routed_arrow(ax, points, color=None, lw=1.4, ms=9, z=6):
+def routed_arrow(ax, points, color=None, lw=1.4, ms=9, z=3):
     if len(points) < 2:
         raise ValueError("routed_arrow needs at least two points")
     if len(points) > 2:
         line(ax, points[:-1], color=color, lw=lw, z=max(2, z - 3))
+        return arrow(ax, points[-2], points[-1], color=color, lw=lw, ms=ms,
+                     z=z, shrink_a=0, shrink_b=1.5)
     return arrow(ax, points[-2], points[-1], color=color, lw=lw, ms=ms, z=z)
 
 
@@ -370,7 +373,8 @@ def build_figure(code_root: Path, data_root: Path, output_dir: Path, font_dir: P
     line(ax, [(split_x, branch_y[-1]), (split_x, branch_y[0])], lw=1.3)
 
     for index, center_y in enumerate(branch_y, start=1):
-        arrow(ax, (split_x, center_y), (0.430, center_y), lw=1.2, ms=7)
+        arrow(ax, (split_x, center_y), (0.430, center_y), lw=1.2, ms=7,
+              shrink_a=0)
         rounded(ax, 0.430, center_y - 0.033, 0.052, 0.066,
                 fc=C["acm_light"], ec=C["acm"], lw=1.15, radius=0.007)
         txt(ax, 0.456, center_y + 0.008, f"ACM x{index}", size=7.3,
@@ -401,7 +405,11 @@ def build_figure(code_root: Path, data_root: Path, output_dir: Path, font_dir: P
         rounded(ax, 0.672, center_y - 0.033, 0.035, 0.066,
                 fc=C["acm_light"], ec=C["acm"], lw=1.1, radius=0.007)
         txt(ax, 0.6895, center_y, "ACM", size=6.8, weight="bold", color=C["acm"])
-        arrow(ax, (0.707, center_y), (0.729, center_y), lw=1.05, ms=7)
+        if index == 2:
+            arrow(ax, (0.707, center_y), (0.718, center_y), lw=1.05, ms=7)
+        else:
+            arrow(ax, (0.707, center_y), (0.729, center_y), lw=1.05, ms=7,
+                  shrink_b=0)
 
     line(ax, [(0.729, branch_y[-1]), (0.729, branch_y[0])], lw=1.15)
     sum_circle = Circle((0.729, branch_y[1]), 0.011, facecolor=C["sum_light"],
@@ -456,7 +464,7 @@ def build_figure(code_root: Path, data_root: Path, output_dir: Path, font_dir: P
     txt(ax, 0.718, 0.297, "Output", size=5.5, color=C["muted"])
 
     decision_x, decision_y, decision_w, decision_h = 0.765, 0.545, 0.111, 0.150
-    arrow(ax, (0.737, 0.620), (decision_x, 0.620), lw=1.5, ms=8)
+    arrow(ax, (0.740, 0.620), (decision_x, 0.620), lw=1.5, ms=8)
     rounded(ax, decision_x, decision_y, decision_w, decision_h,
             fc=C["decision_light"], ec=C["decision"], lw=1.35, radius=0.010)
     txt(ax, decision_x + decision_w / 2, decision_y + 0.126,
@@ -484,9 +492,11 @@ def build_figure(code_root: Path, data_root: Path, output_dir: Path, font_dir: P
     ]
     bus_x = 0.894
     line(ax, [(bus_x, output_ports[-1][1]), (bus_x, output_ports[0][1])], lw=1.1)
-    arrow(ax, (decision_x + decision_w, 0.620), (bus_x, 0.620), lw=1.1, ms=6)
+    arrow(ax, (decision_x + decision_w, 0.620), (bus_x, 0.620), lw=1.1,
+          ms=6, shrink_b=0)
     for port_x, port_y in output_ports:
-        arrow(ax, (bus_x, port_y), (port_x, port_y), color=C["task"], lw=1.0, ms=5)
+        arrow(ax, (bus_x, port_y), (port_x, port_y), color=C["task"],
+              lw=1.0, ms=5, shrink_a=0)
 
     loss_x, loss_y, loss_w, loss_h = 0.765, 0.195, 0.111, 0.190
     rounded(ax, loss_x, loss_y, loss_w, loss_h, fc=C["loss_light"], ec=C["loss"],
