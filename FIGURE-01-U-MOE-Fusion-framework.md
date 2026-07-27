@@ -2,9 +2,8 @@
 
 ## 1. 产物
 
-本轮在 `Materials/figs/` 生成整套可交付格式：
+本轮在 `Materials/figs/` 保留两种可交付格式：
 
-- `fig_u_moe_fusion_framework.svg`：首选排版源，文字与框线保持矢量、示例图已内嵌；
 - `fig_u_moe_fusion_framework.pdf`：论文直接插入版本；
 - `fig_u_moe_fusion_framework.png`：高分辨率预览与 Word/PPT 兼容版本；
 - 绘图脚本：`script/make_framework_figure.py`。
@@ -33,9 +32,13 @@
 | I2 | 决策图融合头 | 右侧橙色模块 | `F_Y=w⊙Y_A+(1−w)⊙Y_B` |
 | I3 | 真实窗口注意力 | 每个 Transformer 块左半部 | 8×8 window attention |
 | I4 | maxfuse 无监督目标 | 右下训练目标框 | SSIM-to-max、max intensity、joint gradient、RMI content |
-| I5 | 任务条件路由 | Task ID/embedding 至各 MoE 的虚线 | token 特征与任务嵌入共同决定专家选择 |
+| I5 | 任务条件路由 | MoE 放大框中的 `e_t → router` 实线 | token 特征与任务嵌入共同决定专家选择 |
 
 MoE 放大框区分了两条计算路径：共享专家始终参与，softmax 路由器仅选择 12 个路由专家中的 top-2；路由负载由 `L_balance` 约束。该表示对应最终 W96L 配置，不把实验过但未采用的 DeepSeek 路由、INN detail head 或 per-task head 画入主图。
+
+### 版式与图例
+
+修订版取消全部穿框虚线和悬浮创新点徽标：数据流统一采用连续实线，跨模块连接沿留白通道或汇聚总线布置；任务条件和训练目标分别在独立通道中连接。I1–I5 在模块标题中直接标注，并在图底部提供完整创新点图例，避免线段、文字和方框互相遮挡。
 
 ### C. 融合与重建
 
@@ -64,7 +67,7 @@ cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
   script/make_framework_figure.py
 ```
 
-脚本默认读取论文实验使用的三组代表样本；可用 `--code-root`、`--data-root` 和 `--output-dir` 改路径。生成后的 SVG/PDF 已内嵌示例图，不依赖外部图片即可移动或排版。
+脚本默认读取论文实验使用的三组代表样本；可用 `--code-root`、`--data-root` 和 `--output-dir` 改路径。生成后的 PDF/PNG 均为自包含文件，不依赖外部图片即可移动或排版。
 
 ## 5. 建议图题
 

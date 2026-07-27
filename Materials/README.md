@@ -6,7 +6,7 @@
 
 ```
 Materials/
-├── figs/                方法章节总体框架图（SVG + PDF + PNG）
+├── figs/                方法章节总体框架图（PDF + PNG）
 │   └── fig_u_moe_fusion_framework.*
 ├── comparison/          §4.2 与 SOTA 的定性对比图（本批已产出）
 │   ├── irvis/
@@ -35,7 +35,7 @@ Materials/
 
 ## 方法总体框架图（figs/）
 
-`figs/fig_u_moe_fusion_framework.{svg,pdf,png}` 展示 U-MoE-Fusion 从三任务统一亮度输入、三分支 ACM + 窗口 Transformer 骨干、任务条件 top-2 MoE，到决策图融合、色度重组与 maxfuse 训练目标的完整流程；底部另列 grouped-MoE、SDPA、compile 与 DDP 工程优化。脚本为 `script/make_framework_figure.py`，设计与实现映射详见根目录 `FIGURE-01-U-MOE-Fusion-framework.md`。
+`figs/fig_u_moe_fusion_framework.{pdf,png}` 展示 U-MoE-Fusion 从三任务统一亮度输入、三分支 ACM + 窗口 Transformer 骨干、任务条件 top-2 MoE，到决策图融合、色度重组与 maxfuse 训练目标的完整流程；底部另列 grouped-MoE、SDPA、compile 与 DDP 工程优化。脚本为 `script/make_framework_figure.py`，设计与实现映射详见根目录 `FIGURE-01-U-MOE-Fusion-framework.md`。
 
 ```bash
 cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
