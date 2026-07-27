@@ -9,7 +9,8 @@ Materials/
 ├── figs/                方法章节总体框架与模块详图（PDF + PNG）
 │   ├── fig_u_moe_fusion_framework.*
 │   ├── fig_u_moe_ffn_detail.*
-│   └── fig_u_moe_unified_preprocessing_detail.*
+│   ├── fig_u_moe_unified_preprocessing_detail.*
+│   └── fig_u_moe_window_attention_detail.*
 ├── comparison/          §4.2 与 SOTA 的定性对比图（本批已产出）
 │   ├── irvis/
 │   │   ├── individual/            # 12 张单图（带红框+左下角局部放大），供 PPT 自排
@@ -43,11 +44,14 @@ Materials/
 
 `figs/fig_u_moe_unified_preprocessing_detail.{pdf,png}` 展开总体框架中的 Unified Preprocessing：三任务有序源对经 stem 配对、BT.601 亮度提取、B→A 尺寸对齐和 `[0,1]` 归一化后，训练阶段执行反射填充、同坐标 170×170 裁块及任务平衡采样，推理阶段保持完整分辨率；源 Cb/Cr 仅走推理旁路，用于最终 RGB 重组。脚本为 `script/make_unified_preprocessing_figure.py`，实现映射详见根目录 `FIGURE-03-Unified-preprocessing-detail.md`。
 
+`figs/fig_u_moe_window_attention_detail.{pdf,png}` 展开最终 W96L 的 8×8 Window Attention：输入经 LayerNorm 和反射填充后划分为非移位窗口，每窗 64 个 token 通过 8 头 Q/K/V、`15×15` 相对位置偏置及 fused SDPA 建模，再经多头拼接、线性投影、window reverse、裁剪和残差连接输出。脚本为 `script/make_window_attention_figure.py`，实现映射详见根目录 `FIGURE-04-Window-attention-detail.md`。
+
 ```bash
 cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
 /ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_framework_figure.py
 /ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_moe_ffn_detail_figure.py
 /ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_unified_preprocessing_figure.py
+/ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_window_attention_figure.py
 ```
 
 ## 训练效率图（efficiency/）
