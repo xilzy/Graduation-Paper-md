@@ -8,7 +8,8 @@
 Materials/
 ├── figs/                方法章节总体框架与模块详图（PDF + PNG）
 │   ├── fig_u_moe_fusion_framework.*
-│   └── fig_u_moe_ffn_detail.*
+│   ├── fig_u_moe_ffn_detail.*
+│   └── fig_u_moe_unified_preprocessing_detail.*
 ├── comparison/          §4.2 与 SOTA 的定性对比图（本批已产出）
 │   ├── irvis/
 │   │   ├── individual/            # 12 张单图（带红框+左下角局部放大），供 PPT 自排
@@ -40,10 +41,13 @@ Materials/
 
 `figs/fig_u_moe_ffn_detail.{pdf,png}` 参照原论文 `figs/3.pdf` 的横向分栏、浅色背景和虚线分组风格，详细展开任务嵌入、softmax top-2 路由、1 个常开共享专家、12 个路由专家、grouped-capacity dispatch、负载均衡辅助损失、残差连接以及单个 `C→4C→C` FFN 专家。E3/E9 仅表示一次示意性 token 路由，不是固定专家。脚本为 `script/make_moe_ffn_detail_figure.py`，实现映射详见根目录 `FIGURE-02-U-MoE-FFN-detail.md`。
 
+`figs/fig_u_moe_unified_preprocessing_detail.{pdf,png}` 展开总体框架中的 Unified Preprocessing：三任务有序源对经 stem 配对、BT.601 亮度提取、B→A 尺寸对齐和 `[0,1]` 归一化后，训练阶段执行反射填充、同坐标 170×170 裁块及任务平衡采样，推理阶段保持完整分辨率；源 Cb/Cr 仅走推理旁路，用于最终 RGB 重组。脚本为 `script/make_unified_preprocessing_figure.py`，实现映射详见根目录 `FIGURE-03-Unified-preprocessing-detail.md`。
+
 ```bash
 cd /ytech_m2v4_hdd/lizhongyin/code/Graduation-Paper-md
 /ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_framework_figure.py
 /ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_moe_ffn_detail_figure.py
+/ytech_m2v4_hdd/lizhongyin/venv/gifnet/bin/python script/make_unified_preprocessing_figure.py
 ```
 
 ## 训练效率图（efficiency/）
